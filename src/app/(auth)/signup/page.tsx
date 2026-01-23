@@ -6,11 +6,13 @@ import { signup } from '../actions'
 
 export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(formData: FormData) {
     setLoading(true)
     setError(null)
+    setSuccess(null)
 
     const password = formData.get('password') as string
     const confirmPassword = formData.get('confirmPassword') as string
@@ -32,7 +34,48 @@ export default function SignupPage() {
     if (result?.error) {
       setError(result.error)
       setLoading(false)
+    } else if (result?.success && result?.message) {
+      setSuccess(result.message)
+      setLoading(false)
     }
+  }
+
+  // Show success message if email confirmation is needed
+  if (success) {
+    return (
+      <main className="min-h-screen flex flex-col items-center justify-center p-8">
+        <div className="w-16 h-16 rounded-full border-2 border-[var(--accent)] flex items-center justify-center mb-8">
+          <span style={{ fontSize: '1.5rem', color: 'var(--accent)' }}>✉</span>
+        </div>
+
+        <h1 className="text-3xl font-light mb-4 text-center">Check Your Email</h1>
+
+        <p className="text-[var(--muted)] mb-8 text-center max-w-sm">
+          {success}
+        </p>
+
+        <div style={{
+          padding: '16px 24px',
+          backgroundColor: 'var(--surface)',
+          borderRadius: '12px',
+          border: '1px solid var(--border)',
+          marginBottom: '24px',
+          maxWidth: '400px',
+          textAlign: 'center',
+        }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--muted)' }}>
+            Click the link in the email to verify your account.
+          </p>
+        </div>
+
+        <Link
+          href="/login"
+          className="px-8 py-3 bg-[var(--accent)] text-[var(--background)] font-medium rounded-xl hover:bg-[var(--accent-hover)] transition-colors"
+        >
+          Go to Sign In
+        </Link>
+      </main>
+    )
   }
 
   return (
