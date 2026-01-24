@@ -33,7 +33,9 @@ src/
 │   │   │   └── actions.ts   # Save session + auto-create journal
 │   │   ├── journal/         # Practice journal
 │   │   ├── stats/           # Statistics dashboard
-│   │   ├── teacher/         # AI chat
+│   │   ├── teacher/         # AI chat with conversation history
+│   │   │   ├── page.tsx     # Chat UI with sidebar
+│   │   │   └── actions.ts   # Conversation CRUD operations
 │   │   ├── settings/        # User settings
 │   │   └── layout.tsx       # App layout with nav
 │   ├── api/
@@ -87,6 +89,14 @@ src/
 - `created_at` (timestamp)
 - `updated_at` (timestamp)
 
+### teacher_conversations
+- `id` (uuid, primary key)
+- `user_id` (uuid, references auth.users)
+- `title` (text) - First message truncated to 50 chars
+- `messages` (jsonb) - Array of {role, content} objects
+- `created_at` (timestamp)
+- `updated_at` (timestamp)
+
 All tables have Row Level Security (RLS) enabled - users can only access their own data.
 
 ## Key Features
@@ -120,6 +130,9 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 - Mahamudra/Dzogchen expertise
 - Access to user's practice history for personalized guidance
 - System prompt in `/api/chat/route.ts`
+- **Conversation history** - Save, continue, and delete past conversations
+- Collapsible sidebar showing all conversations
+- Auto-saves conversations after each message
 
 ### Reminders
 - Browser notifications (Web Notifications API)
