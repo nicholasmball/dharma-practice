@@ -7,10 +7,10 @@ export default function AppLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen" style={{ paddingLeft: '80px' }}>
+    <div className="min-h-screen pb-20 md:pb-0 md:pl-20">
       <Navigation />
       <ReminderChecker />
-      <main style={{ padding: '32px', maxWidth: '1200px' }}>
+      <main className="p-4 md:p-8 max-w-[1200px]">
         {children}
       </main>
     </div>

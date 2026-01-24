@@ -19,9 +19,24 @@ export default function TeacherPage() {
   const [loading, setLoading] = useState(false)
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [includeContext, setIncludeContext] = useState(true)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+      // On desktop, default sidebar to open
+      if (window.innerWidth >= 768) {
+        setSidebarOpen(true)
+      }
+    }
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   // Load conversations on mount
   useEffect(() => {
@@ -48,12 +63,20 @@ export default function TeacherPage() {
     if (conv) {
       setActiveConversationId(id)
       setMessages(conv.messages)
+      // Close sidebar on mobile after selecting
+      if (isMobile) {
+        setSidebarOpen(false)
+      }
     }
   }
 
   const handleNewConversation = () => {
     setActiveConversationId(null)
     setMessages([])
+    // Close sidebar on mobile after action
+    if (isMobile) {
+      setSidebarOpen(false)
+    }
   }
 
   const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
@@ -151,23 +174,69 @@ export default function TeacherPage() {
   })
 
   return (
-    <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: '16px' }}>
+    <div style={{ display: 'flex', height: isMobile ? 'calc(100vh - 140px)' : 'calc(100vh - 100px)', gap: isMobile ? '0' : '16px', position: 'relative' }}>
+      {/* Mobile Overlay Backdrop */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 40,
+          }}
+        />
+      )}
+
       {/* Sidebar */}
       <div style={{
-        width: sidebarOpen ? '280px' : '0px',
-        flexShrink: 0,
+        ...(isMobile ? {
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: '280px',
+          zIndex: 50,
+          transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+          transition: 'transform 0.2s ease',
+        } : {
+          width: sidebarOpen ? '280px' : '0px',
+          flexShrink: 0,
+          transition: 'width 0.2s ease',
+        }),
         backgroundColor: 'var(--surface)',
-        borderRadius: '16px',
-        border: sidebarOpen ? '1px solid var(--border)' : 'none',
+        borderRadius: isMobile ? '0' : '16px',
+        borderTop: (sidebarOpen || isMobile) ? '1px solid var(--border)' : 'none',
+        borderRight: (sidebarOpen || isMobile) ? '1px solid var(--border)' : 'none',
+        borderBottom: (sidebarOpen || isMobile) ? '1px solid var(--border)' : 'none',
+        borderLeft: isMobile ? 'none' : ((sidebarOpen || isMobile) ? '1px solid var(--border)' : 'none'),
         overflow: 'hidden',
-        transition: 'width 0.2s ease',
         display: 'flex',
         flexDirection: 'column',
       }}>
-        {sidebarOpen && (
+        {(sidebarOpen || isMobile) && (
           <>
+            {/* Close button for mobile */}
+            {isMobile && (
+              <div style={{ padding: '12px 16px', display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--muted)',
+                    fontSize: '1.5rem',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
             {/* New Conversation Button */}
-            <div style={{ padding: '16px', paddingBottom: '8px' }}>
+            <div style={{ padding: isMobile ? '0 16px 8px' : '16px 16px 8px' }}>
               <button
                 onClick={handleNewConversation}
                 style={{
@@ -271,39 +340,61 @@ export default function TeacherPage() {
         )}
       </div>
 
-      {/* Toggle Sidebar Button */}
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        style={{
-          position: 'absolute',
-          left: sidebarOpen ? '348px' : '88px',
-          top: '140px',
-          width: '24px',
-          height: '24px',
-          borderRadius: '50%',
-          border: '1px solid var(--border)',
-          backgroundColor: 'var(--surface)',
-          color: 'var(--muted)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '0.75rem',
-          zIndex: 10,
-          transition: 'left 0.2s ease',
-        }}
-      >
-        {sidebarOpen ? '◀' : '▶'}
-      </button>
+      {/* Toggle Sidebar Button - Desktop only */}
+      {!isMobile && (
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          style={{
+            position: 'absolute',
+            left: sidebarOpen ? '284px' : '4px',
+            top: '70px',
+            width: '24px',
+            height: '24px',
+            borderRadius: '50%',
+            border: '1px solid var(--border)',
+            backgroundColor: 'var(--surface)',
+            color: 'var(--muted)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '0.75rem',
+            zIndex: 10,
+            transition: 'left 0.2s ease',
+          }}
+        >
+          {sidebarOpen ? '◀' : '▶'}
+        </button>
+      )}
 
       {/* Chat Area */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Header */}
-        <div style={{ marginBottom: '16px' }}>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 300, marginBottom: '4px' }}>Meditation Teacher</h1>
-          <p style={{ color: 'var(--muted)', fontSize: '0.875rem' }}>
-            {activeConversationId ? 'Continuing conversation' : 'Start a new conversation'}
-          </p>
+        <div style={{ marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+          {/* Mobile menu button */}
+          {isMobile && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--surface)',
+                color: 'var(--foreground)',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                flexShrink: 0,
+              }}
+            >
+              ☰
+            </button>
+          )}
+          <div>
+            <h1 style={{ fontSize: isMobile ? '1.25rem' : '1.5rem', fontWeight: 300, marginBottom: '4px' }}>Meditation Teacher</h1>
+            <p style={{ color: 'var(--muted)', fontSize: '0.875rem' }}>
+              {activeConversationId ? 'Continuing conversation' : 'Start a new conversation'}
+            </p>
+          </div>
         </div>
 
         {/* Messages Area */}
@@ -313,11 +404,11 @@ export default function TeacherPage() {
           backgroundColor: 'var(--surface)',
           borderRadius: '16px',
           border: '1px solid var(--border)',
-          padding: '20px',
+          padding: isMobile ? '12px' : '20px',
           marginBottom: '16px',
         }}>
           {messages.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+            <div style={{ textAlign: 'center', padding: isMobile ? '20px 10px' : '40px 20px' }}>
               <div style={{
                 width: '64px',
                 height: '64px',
@@ -330,7 +421,7 @@ export default function TeacherPage() {
               }}>
                 <span style={{ fontSize: '1.5rem', color: 'var(--accent)' }}>◈</span>
               </div>
-              <p style={{ color: 'var(--muted)', marginBottom: '24px', lineHeight: 1.6 }}>
+              <p style={{ color: 'var(--muted)', marginBottom: '24px', lineHeight: 1.6, fontSize: isMobile ? '0.875rem' : '1rem' }}>
                 I'm here to support your meditation practice. Ask me about shamatha, vipashyana,
                 Mahamudra, Dzogchen, or any challenges you're experiencing.
               </p>
@@ -344,7 +435,7 @@ export default function TeacherPage() {
                 marginBottom: '24px',
                 cursor: 'pointer',
                 color: 'var(--muted)',
-                fontSize: '0.875rem',
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
               }}>
                 <input
                   type="checkbox"
@@ -369,7 +460,7 @@ export default function TeacherPage() {
                       color: 'var(--foreground)',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      fontSize: '0.875rem',
+                      fontSize: isMobile ? '0.8rem' : '0.875rem',
                     }}
                   >
                     {question}
@@ -388,13 +479,14 @@ export default function TeacherPage() {
                   }}
                 >
                   <div style={{
-                    maxWidth: '85%',
-                    padding: '14px 18px',
+                    maxWidth: isMobile ? '90%' : '85%',
+                    padding: isMobile ? '10px 14px' : '14px 18px',
                     borderRadius: message.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                     backgroundColor: message.role === 'user' ? 'var(--accent)' : 'var(--background)',
                     color: message.role === 'user' ? 'var(--background)' : 'var(--foreground)',
                     whiteSpace: 'pre-wrap',
                     lineHeight: 1.6,
+                    fontSize: isMobile ? '0.875rem' : '1rem',
                   }}>
                     {message.content}
                   </div>
@@ -403,7 +495,7 @@ export default function TeacherPage() {
               {loading && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <div style={{
-                    padding: '14px 18px',
+                    padding: isMobile ? '10px 14px' : '14px 18px',
                     borderRadius: '16px 16px 16px 4px',
                     backgroundColor: 'var(--background)',
                     color: 'var(--muted)',
@@ -418,29 +510,29 @@ export default function TeacherPage() {
         </div>
 
         {/* Input Area */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '12px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a question about your practice..."
+            placeholder={isMobile ? "Ask a question..." : "Ask a question about your practice..."}
             disabled={loading}
             style={{
               flex: 1,
-              padding: '16px 20px',
+              padding: isMobile ? '12px 14px' : '16px 20px',
               borderRadius: '12px',
               border: '1px solid var(--border)',
               backgroundColor: 'var(--surface)',
               color: 'var(--foreground)',
               outline: 'none',
-              fontSize: '1rem',
+              fontSize: isMobile ? '0.875rem' : '1rem',
             }}
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
             style={{
-              padding: '16px 28px',
+              padding: isMobile ? '12px 16px' : '16px 28px',
               borderRadius: '12px',
               border: 'none',
               backgroundColor: 'var(--accent)',
@@ -448,6 +540,7 @@ export default function TeacherPage() {
               fontWeight: 600,
               cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
               opacity: loading || !input.trim() ? 0.5 : 1,
+              fontSize: isMobile ? '0.875rem' : '1rem',
             }}
           >
             Send
