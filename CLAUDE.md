@@ -132,6 +132,7 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 - System prompt in `/api/chat/route.ts`
 - **Conversation history** - Save, continue, and delete past conversations
 - Collapsible sidebar showing all conversations
+- **Search** - Find conversations by title or message content
 - Auto-saves conversations after each message
 
 ### Reminders
