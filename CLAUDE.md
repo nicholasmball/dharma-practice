@@ -2,6 +2,8 @@
 
 A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
 
+**Live at:** https://buddha-balla.com
+
 ## Tech Stack
 
 - **Framework:** Next.js 15 (App Router)
@@ -9,8 +11,10 @@ A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
 - **Styling:** Tailwind CSS v4 + Inline styles (for reliability)
 - **Database:** Supabase (PostgreSQL)
 - **Authentication:** Supabase Auth
+- **Email:** Resend (SMTP)
 - **AI:** Anthropic Claude API
 - **Hosting:** Vercel
+- **Domain:** Namecheap
 
 ## Project Structure
 
@@ -19,11 +23,14 @@ src/
 ├── app/
 │   ├── (auth)/              # Public auth pages
 │   │   ├── login/
-│   │   ├── signup/
+│   │   ├── signup/          # Shows email confirmation message
 │   │   └── actions.ts       # Auth server actions
 │   ├── (app)/               # Protected app pages
 │   │   ├── dashboard/
 │   │   ├── timer/           # Meditation timer
+│   │   │   ├── page.tsx     # Server component (loads user settings)
+│   │   │   ├── TimerClient.tsx  # Client component (timer UI)
+│   │   │   └── actions.ts   # Save session + auto-create journal
 │   │   ├── journal/         # Practice journal
 │   │   ├── stats/           # Statistics dashboard
 │   │   ├── teacher/         # AI chat
@@ -91,6 +98,8 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 - Start/pause/resume/end controls
 - Singing bowl sound (Web Audio API)
 - Auto-save on completion
+- **Loads user's default duration and practice type from settings**
+- **Session notes auto-create a journal entry** with title format: "Shamatha - Jan 24, 2026 - 20 min"
 
 ### Practice Journal
 - Rich text entries
@@ -98,6 +107,7 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 - Practice type association
 - Search and filter
 - Edit and delete
+- Auto-created entries from session notes tagged with "session notes"
 
 ### Statistics Dashboard
 - Time summaries (today/week/month/all-time)
@@ -150,14 +160,36 @@ npm run start    # Start production server
 
 ## Deployment
 
-Deployed on Vercel. Push to `main` branch triggers automatic deployment.
+Deployed on Vercel at buddha-balla.com. Push to `main` branch triggers automatic deployment.
 
-Remember to:
-1. Set environment variables in Vercel dashboard
-2. Add Vercel URL to Supabase Auth redirect URLs
+```bash
+git add .
+git commit -m "Description of changes"
+git push
+```
+
+### Services Configuration
+
+**Vercel:**
+- Environment variables set in dashboard
+- Custom domain: buddha-balla.com
+
+**Supabase:**
+- Auth redirect URLs include buddha-balla.com
+- Custom SMTP via Resend for emails
+
+**Resend:**
+- SMTP for transactional emails (signup confirmation)
+- Domain: buddha-balla.com verified
+
+**Namecheap:**
+- Domain registrar for buddha-balla.com
+- DNS records point to Vercel + Resend
 
 ## Costs
 
 - **Vercel:** Free tier (100GB bandwidth)
 - **Supabase:** Free tier (500MB database, 50k MAU)
+- **Resend:** Free tier (100 emails/day)
 - **Claude API:** Pay-per-use (~$3-15/month typical)
+- **Domain:** ~$12/year
