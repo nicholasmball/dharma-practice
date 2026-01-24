@@ -144,6 +144,12 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 - Download all data as JSON
 - Includes sessions, journal entries, settings
 
+### Mobile Responsive
+- **Navigation**: Bottom bar on mobile, sidebar on desktop
+- **Layout**: Responsive padding and spacing via Tailwind `md:` breakpoints
+- **Teacher page**: Slide-out conversation drawer with hamburger menu on mobile
+- Mobile detection via `window.innerWidth < 768`
+
 ## Environment Variables
 
 ```
