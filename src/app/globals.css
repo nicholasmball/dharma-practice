@@ -2,7 +2,7 @@
 
 @layer base {
   :root {
-    /* Dark contemplative color palette */
+    /* Dark contemplative color palette (default) */
     --background: #1a1f2e;
     --foreground: #e0e4eb;
 
@@ -23,6 +23,30 @@
     /* Error/success colors */
     --error: #e05555;
     --success: #55b085;
+  }
+
+  [data-theme="light"] {
+    /* Light contemplative color palette */
+    --background: #f5f5f0;
+    --foreground: #1a1f2e;
+
+    /* Slightly deeper gold for light mode contrast */
+    --accent: #b8941f;
+    --accent-hover: #9a7a18;
+
+    /* Surface colors for cards, inputs */
+    --surface: #ffffff;
+    --surface-hover: #f0f0eb;
+
+    /* Border color */
+    --border: #d4d4cf;
+
+    /* Muted text */
+    --muted: #6b7280;
+
+    /* Error/success colors - slightly adjusted for light bg */
+    --error: #dc2626;
+    --success: #16a34a;
   }
 
   * {

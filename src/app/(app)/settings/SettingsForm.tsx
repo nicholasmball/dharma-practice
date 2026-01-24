@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { updateSettings, exportUserData } from './actions'
 import { logout } from '@/app/(auth)/actions'
 import { PracticeType, practiceTypeLabels } from '@/lib/types'
+import { useTheme } from '@/components/ThemeProvider'
 
 const PRACTICE_TYPES: PracticeType[] = ['shamatha', 'vipashyana', 'mahamudra', 'dzogchen', 'other']
 
@@ -30,6 +31,7 @@ interface SettingsFormProps {
 
 export default function SettingsForm({ initialSettings, userEmail }: SettingsFormProps) {
   const router = useRouter()
+  const { theme, setTheme } = useTheme()
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -151,6 +153,62 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
             Sign Out
           </button>
         </form>
+      </section>
+
+      {/* Appearance Section */}
+      <section style={{
+        backgroundColor: 'var(--surface)',
+        borderRadius: '16px',
+        border: '1px solid var(--border)',
+        padding: '24px',
+      }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '16px' }}>Appearance</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ marginBottom: '4px' }}>Theme</p>
+            <p style={{ color: 'var(--muted)', fontSize: '0.875rem' }}>
+              Choose between light and dark mode
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setTheme('light')}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '10px',
+                border: theme === 'light' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                backgroundColor: theme === 'light' ? 'var(--background)' : 'transparent',
+                color: 'var(--foreground)',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span style={{ fontSize: '1rem' }}>☀️</span> Light
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme('dark')}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '10px',
+                border: theme === 'dark' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                backgroundColor: theme === 'dark' ? 'var(--background)' : 'transparent',
+                color: 'var(--foreground)',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span style={{ fontSize: '1rem' }}>🌙</span> Dark
+            </button>
+          </div>
+        </div>
       </section>
 
       {/* Defaults Section */}

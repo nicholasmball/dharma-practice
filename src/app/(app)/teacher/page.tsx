@@ -7,9 +7,105 @@ import {
   createConversation,
   updateConversation,
   deleteConversation,
+  getPracticeProfile,
   Conversation,
   Message,
+  PracticeProfile,
 } from './actions'
+
+// Question pools based on practitioner profile
+const QUESTION_POOLS = {
+  newPractitioner: [
+    "What's the best way to establish a daily meditation habit?",
+    "I'm new to meditation. Where should I begin?",
+    "How long should I meditate as a beginner?",
+    "What should I do when my mind wanders during meditation?",
+    "Can you explain the basics of shamatha practice?",
+    "What posture is best for meditation?",
+  ],
+  shamatha: [
+    "How do I deepen my calm abiding practice?",
+    "I can rest in stillness but my mind is still subtly active. What next?",
+    "What are the signs of progress in shamatha?",
+    "How do I work with subtle dullness in meditation?",
+    "When is the right time to transition from shamatha to vipashyana?",
+    "How do I cultivate stable attention without tension?",
+  ],
+  vipashyana: [
+    "How do I investigate the nature of mind in vipashyana?",
+    "What's the relationship between shamatha and vipashyana?",
+    "Can you explain the four foundations of mindfulness?",
+    "How do I practice analytical meditation effectively?",
+    "What does it mean to see the empty nature of thoughts?",
+    "How do I balance stability with inquiry in practice?",
+  ],
+  dzogchen: [
+    "Can you explain the view of Dzogchen in simple terms?",
+    "What is rigpa and how do I recognize it?",
+    "How do I sustain recognition of awareness throughout the day?",
+    "What's the relationship between trekchö and tögal?",
+    "How do I work with thoughts without following or suppressing them?",
+    "What role does devotion play in Dzogchen practice?",
+  ],
+  mahamudra: [
+    "What distinguishes Mahamudra from other meditation approaches?",
+    "How do I rest in the natural state of mind?",
+    "Can you explain the four yogas of Mahamudra?",
+    "What does it mean to recognize mind's true nature?",
+    "How do I integrate Mahamudra into daily activities?",
+    "What is the role of pointing-out instructions?",
+  ],
+  returningAfterBreak: [
+    "I've been away from practice for a while. How do I restart?",
+    "How do I rebuild momentum after losing my practice routine?",
+    "I feel guilty about not practicing. How do I work with that?",
+    "What's the best way to re-establish a meditation habit?",
+    "How do I reconnect with my practice after time away?",
+    "Should I start from the beginning or pick up where I left off?",
+  ],
+  activeStreak: [
+    "I've been practicing consistently. What's the next step in my development?",
+    "How do I deepen my practice beyond just maintaining it?",
+    "What signs indicate I'm ready for more advanced practices?",
+    "How do I prevent my practice from becoming stale or mechanical?",
+    "What should I focus on to make the most of my momentum?",
+    "How do I integrate practice realization into daily life?",
+  ],
+}
+
+function selectPersonalizedQuestions(profile: PracticeProfile): string[] {
+  let pool: string[]
+
+  // Determine which pool to use based on profile
+  if (profile.sessionCount < 5) {
+    pool = QUESTION_POOLS.newPractitioner
+  } else if (profile.daysSinceLastSession !== null && profile.daysSinceLastSession > 7) {
+    pool = QUESTION_POOLS.returningAfterBreak
+  } else if (profile.currentStreak >= 7) {
+    pool = QUESTION_POOLS.activeStreak
+  } else {
+    // Use practice-type specific questions
+    switch (profile.dominantPracticeType) {
+      case 'dzogchen':
+        pool = QUESTION_POOLS.dzogchen
+        break
+      case 'mahamudra':
+        pool = QUESTION_POOLS.mahamudra
+        break
+      case 'vipashyana':
+        pool = QUESTION_POOLS.vipashyana
+        break
+      case 'shamatha':
+      default:
+        pool = QUESTION_POOLS.shamatha
+        break
+    }
+  }
+
+  // Shuffle and pick 4 questions
+  const shuffled = [...pool].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, 4)
+}
 
 export default function TeacherPage() {
   const [conversations, setConversations] = useState<Conversation[]>([])
@@ -22,6 +118,7 @@ export default function TeacherPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isMobile, setIsMobile] = useState(false)
+  const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Detect mobile screen size
@@ -38,10 +135,17 @@ export default function TeacherPage() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Load conversations on mount
+  // Load conversations and practice profile on mount
   useEffect(() => {
     loadConversations()
+    loadPracticeProfile()
   }, [])
+
+  const loadPracticeProfile = async () => {
+    const profile = await getPracticeProfile()
+    const questions = selectPersonalizedQuestions(profile)
+    setSuggestedQuestions(questions)
+  }
 
   const loadConversations = async () => {
     setLoadingConversations(true)
@@ -145,12 +249,15 @@ export default function TeacherPage() {
     }
   }
 
-  const suggestedQuestions = [
+  // Default questions shown while profile loads
+  const defaultQuestions = [
     "I'm struggling with a busy mind during meditation. Any advice?",
     "Can you explain the difference between shamatha and vipashyana?",
     "What is rigpa in Dzogchen practice?",
     "How do I integrate practice into daily life?",
   ]
+
+  const displayQuestions = suggestedQuestions.length > 0 ? suggestedQuestions : defaultQuestions
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -448,7 +555,7 @@ export default function TeacherPage() {
 
               {/* Suggested Questions */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: '400px', margin: '0 auto' }}>
-                {suggestedQuestions.map((question, index) => (
+                {displayQuestions.map((question, index) => (
                   <button
                     key={index}
                     onClick={() => setInput(question)}

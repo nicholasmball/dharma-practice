@@ -50,6 +50,51 @@ export default async function StatsPage() {
   // Average session length
   const avgSessionMinutes = totalSessions > 0 ? Math.round(totalMinutes / totalSessions) : 0
 
+  // Calculate time since last sit
+  const getTimeSinceLastSit = () => {
+    if (allSessions.length === 0) {
+      return { text: 'No sessions yet', isRecent: false, color: 'var(--muted)' }
+    }
+
+    const lastSession = allSessions[0] // Already sorted descending
+    const lastEndTime = new Date(lastSession.ended_at || lastSession.started_at)
+    const diffMs = now.getTime() - lastEndTime.getTime()
+    const diffHours = diffMs / (1000 * 60 * 60)
+    const diffDays = diffMs / (1000 * 60 * 60 * 24)
+
+    let text: string
+    let isRecent: boolean
+    let color: string
+
+    if (diffHours < 1) {
+      text = 'Just now'
+      isRecent = true
+      color = 'var(--success)'
+    } else if (diffHours < 24) {
+      const hours = Math.floor(diffHours)
+      text = `${hours} hour${hours === 1 ? '' : 's'} ago`
+      isRecent = true
+      color = 'var(--success)'
+    } else if (diffDays < 2) {
+      text = 'Yesterday'
+      isRecent = true
+      color = 'var(--success)'
+    } else if (diffDays <= 2) {
+      text = '2 days ago'
+      isRecent = false
+      color = 'var(--accent)'
+    } else {
+      const days = Math.floor(diffDays)
+      text = `${days} days ago`
+      isRecent = false
+      color = days > 7 ? 'var(--error)' : 'var(--accent)'
+    }
+
+    return { text, isRecent, color }
+  }
+
+  const timeSinceLastSit = getTimeSinceLastSit()
+
   return (
     <div>
       <h1 style={{ fontSize: '1.875rem', fontWeight: 300, marginBottom: '32px' }}>
@@ -71,6 +116,22 @@ export default async function StatsPage() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Time Since Last Sit - Prominent Card */}
+          <div style={{
+            padding: '24px',
+            backgroundColor: 'var(--surface)',
+            borderRadius: '16px',
+            border: `2px solid ${timeSinceLastSit.color}`,
+            textAlign: 'center',
+          }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '8px' }}>
+              Last Practice
+            </p>
+            <p style={{ fontSize: '2rem', fontWeight: 300, color: timeSinceLastSit.color }}>
+              {timeSinceLastSit.text}
+            </p>
+          </div>
+
           {/* Time Summary Cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
             <StatCard label="Today" value={`${todayMinutes}`} unit="min" />
