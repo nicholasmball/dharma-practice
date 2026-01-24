@@ -20,6 +20,7 @@ export default function TeacherPage() {
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [includeContext, setIncludeContext] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Load conversations on mount
@@ -139,6 +140,16 @@ export default function TeacherPage() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
+  // Filter conversations based on search query
+  const filteredConversations = conversations.filter(conv => {
+    if (!searchQuery.trim()) return true
+    const query = searchQuery.toLowerCase()
+    // Search in title
+    if (conv.title.toLowerCase().includes(query)) return true
+    // Search in message content
+    return conv.messages.some(msg => msg.content.toLowerCase().includes(query))
+  })
+
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 120px)', gap: '16px' }}>
       {/* Sidebar */}
@@ -156,7 +167,7 @@ export default function TeacherPage() {
         {sidebarOpen && (
           <>
             {/* New Conversation Button */}
-            <div style={{ padding: '16px' }}>
+            <div style={{ padding: '16px', paddingBottom: '8px' }}>
               <button
                 onClick={handleNewConversation}
                 style={{
@@ -178,18 +189,38 @@ export default function TeacherPage() {
               </button>
             </div>
 
+            {/* Search Input */}
+            <div style={{ padding: '0 16px 12px' }}>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search conversations..."
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'var(--background)',
+                  color: 'var(--foreground)',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
             {/* Conversation List */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 16px' }}>
               {loadingConversations ? (
                 <p style={{ color: 'var(--muted)', fontSize: '0.875rem', textAlign: 'center', padding: '16px' }}>
                   Loading...
                 </p>
-              ) : conversations.length === 0 ? (
+              ) : filteredConversations.length === 0 ? (
                 <p style={{ color: 'var(--muted)', fontSize: '0.875rem', textAlign: 'center', padding: '16px' }}>
-                  No conversations yet
+                  {searchQuery ? 'No matching conversations' : 'No conversations yet'}
                 </p>
               ) : (
-                conversations.map(conv => (
+                filteredConversations.map(conv => (
                   <div
                     key={conv.id}
                     onClick={() => handleSelectConversation(conv.id)}
