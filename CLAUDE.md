@@ -25,6 +25,8 @@ src/
 │   ├── (auth)/              # Public auth pages
 │   │   ├── login/
 │   │   ├── signup/          # Shows email confirmation message
+│   │   ├── forgot-password/ # Request password reset email
+│   │   ├── reset-password/  # Set new password (from email link)
 │   │   └── actions.ts       # Auth server actions
 │   ├── (app)/               # Protected app pages
 │   │   ├── dashboard/
@@ -103,6 +105,25 @@ src/
 All tables have Row Level Security (RLS) enabled - users can only access their own data.
 
 ## Key Features
+
+### Authentication
+- Email/password signup with confirmation email
+- Login with "Forgot password?" link
+- **Password reset flow**: Request email → click link → set new password
+- Supabase Auth handles tokens and sessions
+
+### Landing Page
+- Hero with "Start Your Practice" CTA
+- Feature cards (Timer, Journal, AI Teacher, Stats)
+- "Free to use. No ads." messaging
+
+### New User Onboarding
+- Shows on dashboard until 3 steps complete:
+  1. Complete first meditation
+  2. Write first journal entry
+  3. Ask the teacher a question
+- Checkmarks for completed steps
+- Dynamic CTA button for next action
 
 ### Meditation Timer
 - Duration presets (10, 20, 30, 45, 60 min) + custom
@@ -225,7 +246,7 @@ git push
 - Custom SMTP via Resend for emails
 
 **Resend:**
-- SMTP for transactional emails (signup confirmation)
+- SMTP for transactional emails (signup confirmation, password reset)
 - Domain: buddha-balla.com verified
 
 **Namecheap:**
