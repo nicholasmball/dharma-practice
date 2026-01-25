@@ -4,6 +4,18 @@ A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
 
 **Live at:** https://buddha-balla.com
 
+## About the Developer
+
+**Nicholas Ball** - Not a professional developer (last coded ~20 years ago). Building this app for personal use and to share with others interested in meditation practice.
+
+**When helping Nicholas:**
+- Handle all setup and implementation
+- Explain every step clearly in plain English
+- Provide exact commands to run and specify where to run them
+- He's on Windows
+- He prefers to test locally before committing/pushing
+- He understands concepts well when explained, but don't assume prior knowledge of modern dev tooling
+
 ## Tech Stack
 
 - **Framework:** Next.js 16 (App Router)
