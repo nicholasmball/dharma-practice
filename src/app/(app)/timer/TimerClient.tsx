@@ -143,6 +143,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
     setTimeRemaining(selectedDuration)
     lastBellTimeRef.current = 0
     setTimerState('running')
+    playBell() // Play bell at start of session
   }
 
   const handlePause = () => {
