@@ -133,7 +133,7 @@ export default async function StatsPage() {
           </div>
 
           {/* Time Summary Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <StatCard label="Today" value={`${todayMinutes}`} unit="min" />
             <StatCard label="This Week" value={`${weekMinutes}`} unit="min" />
             <StatCard label="This Month" value={`${monthMinutes}`} unit="min" />
@@ -141,7 +141,7 @@ export default async function StatsPage() {
           </div>
 
           {/* Streak and Session Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             <StatCard label="Current Streak" value={`${currentStreak}`} unit="days" highlight />
             <StatCard label="Longest Streak" value={`${longestStreak}`} unit="days" />
             <StatCard label="Total Sessions" value={`${totalSessions}`} unit="sits" />

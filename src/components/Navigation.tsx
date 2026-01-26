@@ -8,7 +8,7 @@ const navItems = [
   { href: '/dashboard', label: 'Home', icon: '⌂' },
   { href: '/timer', label: 'Meditate', icon: '◯' },
   { href: '/journal', label: 'Journal', icon: '✎' },
-  { href: '/stats', label: 'Statistics', icon: '◫' },
+  { href: '/stats', label: 'Stats', icon: '◫' },
   { href: '/teacher', label: 'Teacher', icon: '◈' },
   { href: '/settings', label: 'Settings', icon: '⚙' },
 ]
@@ -18,7 +18,7 @@ export default function Navigation() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 md:top-0 md:left-0 md:right-auto md:bottom-0 md:w-20 bg-[var(--surface)] border-t md:border-t-0 md:border-r border-[var(--border)] z-50">
-      <div className="flex md:flex-col items-center justify-around md:justify-start md:py-6 h-16 md:h-full">
+      <div className="flex md:flex-col items-center justify-evenly md:justify-start md:py-6 h-16 md:h-full px-1 md:px-0">
         {/* Logo - visible only on desktop */}
         <Link href="/dashboard" className="hidden md:block mb-8">
           <div className="w-10 h-10 rounded-full border-2 border-[var(--accent)] opacity-60 hover:opacity-100 transition-opacity" />
@@ -31,7 +31,7 @@ export default function Navigation() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center justify-center p-2 md:p-3 md:mb-2 rounded-xl transition-colors ${
+              className={`flex flex-col items-center justify-center p-1.5 md:p-3 md:mb-2 rounded-xl transition-colors min-w-0 ${
                 isActive
                   ? 'text-[var(--accent)] bg-[var(--accent)]/10'
                   : 'text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
@@ -39,7 +39,7 @@ export default function Navigation() {
               title={item.label}
             >
               <span className="text-lg md:text-xl">{item.icon}</span>
-              <span className="text-[10px] md:text-xs mt-1">{item.label}</span>
+              <span className="text-[9px] md:text-xs mt-0.5 md:mt-1">{item.label}</span>
             </Link>
           )
         })}
