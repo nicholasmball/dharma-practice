@@ -20,7 +20,7 @@ export default function StatsCharts({ dailyData, practiceBreakdown, totalSession
   const maxMinutes = Math.max(...dailyData.map(d => d.minutes), 1)
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+    <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-3 md:gap-4">
       {/* Daily Practice Chart */}
       <div style={{
         backgroundColor: 'var(--surface)',
