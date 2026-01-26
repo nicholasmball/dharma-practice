@@ -15,6 +15,14 @@ const DURATION_PRESETS = [
 
 const PRACTICE_TYPES: PracticeType[] = ['shamatha', 'vipashyana', 'mahamudra', 'dzogchen', 'other']
 
+const PRACTICE_DESCRIPTIONS: Record<PracticeType, string> = {
+  shamatha: 'Focusing on the breath to settle the mind',
+  vipashyana: 'Investigating the nature of experience',
+  mahamudra: 'Resting in the natural state of mind',
+  dzogchen: 'Recognizing and resting in pure awareness',
+  other: 'Any other meditation practice',
+}
+
 type TimerState = 'setup' | 'running' | 'paused' | 'completed'
 
 interface TimerClientProps {
@@ -32,10 +40,13 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
   const [intervalBells, setIntervalBells] = useState(0) // 0 = off
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
+  const [practiceTypeExpanded, setPracticeTypeExpanded] = useState(false)
+  const [prepCountdown, setPrepCountdown] = useState<number | null>(null)
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const lastBellTimeRef = useRef<number>(0)
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null)
 
   // Initialize audio context
   const getAudioContext = useCallback(() => {
@@ -43,6 +54,25 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)()
     }
     return audioContextRef.current
+  }, [])
+
+  // Request wake lock to keep screen on during meditation
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen')
+      }
+    } catch (e) {
+      console.log('Wake lock not available')
+    }
+  }, [])
+
+  // Release wake lock
+  const releaseWakeLock = useCallback(() => {
+    if (wakeLockRef.current) {
+      wakeLockRef.current.release()
+      wakeLockRef.current = null
+    }
   }, [])
 
   // Play singing bowl sound
@@ -113,6 +143,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
           if (newTime <= 0) {
             clearInterval(intervalRef.current!)
             setTimerState('completed')
+            releaseWakeLock()
             playBell()
             return 0
           }
@@ -126,7 +157,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
         clearInterval(intervalRef.current)
       }
     }
-  }, [timerState, intervalBells, selectedDuration, playBell])
+  }, [timerState, intervalBells, selectedDuration, playBell, releaseWakeLock])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -142,9 +173,28 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
     getAudioContext() // Initialize
     setTimeRemaining(selectedDuration)
     lastBellTimeRef.current = 0
-    setTimerState('running')
-    playBell() // Play bell at start of session
+    requestWakeLock()
+
+    // Start preparation countdown
+    setPrepCountdown(5)
   }
+
+  // Preparation countdown effect
+  useEffect(() => {
+    if (prepCountdown === null) return
+
+    if (prepCountdown > 0) {
+      const timeout = setTimeout(() => {
+        setPrepCountdown(prepCountdown - 1)
+      }, 1000)
+      return () => clearTimeout(timeout)
+    } else {
+      // Prep complete, start actual meditation
+      setPrepCountdown(null)
+      setTimerState('running')
+      playBell()
+    }
+  }, [prepCountdown, playBell])
 
   const handlePause = () => {
     setTimerState('paused')
@@ -156,6 +206,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
 
   const handleEnd = () => {
     setTimerState('completed')
+    releaseWakeLock()
     playBell()
   }
 
@@ -180,6 +231,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
     setTimerState('setup')
     setTimeRemaining(selectedDuration)
     setNotes('')
+    releaseWakeLock()
   }
 
   const handleCustomDuration = () => {
@@ -188,6 +240,33 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
       setSelectedDuration(mins * 60)
       setCustomMinutes('')
     }
+  }
+
+  // Preparation countdown screen
+  if (prepCountdown !== null) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh' }}>
+        <p style={{ color: 'var(--muted)', marginBottom: '24px', fontSize: '1.125rem' }}>
+          Get settled...
+        </p>
+        <div style={{
+          width: '200px',
+          height: '200px',
+          borderRadius: '50%',
+          border: '4px solid var(--accent)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <span style={{ fontSize: '5rem', fontWeight: 300, color: 'var(--accent)' }}>
+            {prepCountdown}
+          </span>
+        </div>
+        <p style={{ color: 'var(--muted)', marginTop: '24px', textTransform: 'capitalize' }}>
+          {practiceTypeLabels[practiceType]} · {Math.floor(selectedDuration / 60)} min
+        </p>
+      </div>
+    )
   }
 
   // Setup screen
@@ -203,19 +282,20 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
           <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '12px' }}>
             Duration
           </label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '12px' }}>
             {DURATION_PRESETS.map((preset) => (
               <button
                 key={preset.seconds}
                 onClick={() => setSelectedDuration(preset.seconds)}
                 style={{
-                  padding: '12px 20px',
+                  padding: '12px 8px',
                   borderRadius: '12px',
                   border: selectedDuration === preset.seconds ? '2px solid var(--accent)' : '1px solid var(--border)',
                   backgroundColor: selectedDuration === preset.seconds ? 'var(--accent)' : 'var(--surface)',
                   color: selectedDuration === preset.seconds ? 'var(--background)' : 'var(--foreground)',
                   cursor: 'pointer',
                   fontWeight: 500,
+                  fontSize: '0.9rem',
                 }}
               >
                 {preset.label}
@@ -261,33 +341,78 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
           <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '12px' }}>
             Practice Type
           </label>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {PRACTICE_TYPES.map((type) => (
-              <button
-                key={type}
-                onClick={() => setPracticeType(type)}
-                style={{
-                  padding: '14px 20px',
-                  borderRadius: '12px',
-                  border: practiceType === type ? '2px solid var(--accent)' : '1px solid var(--border)',
-                  backgroundColor: practiceType === type ? 'var(--accent)' : 'var(--surface)',
-                  color: practiceType === type ? 'var(--background)' : 'var(--foreground)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  fontWeight: practiceType === type ? 500 : 400,
-                }}
-              >
-                {practiceTypeLabels[type]}
-              </button>
-            ))}
-          </div>
+
+          {!practiceTypeExpanded ? (
+            // Collapsed view - show selected type with Change button
+            <button
+              onClick={() => setPracticeTypeExpanded(true)}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                borderRadius: '12px',
+                border: '2px solid var(--accent)',
+                backgroundColor: 'var(--accent)',
+                color: 'var(--background)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <div>
+                <span style={{ display: 'block', fontWeight: 500 }}>{practiceTypeLabels[practiceType]}</span>
+                <span style={{ display: 'block', fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}>
+                  {PRACTICE_DESCRIPTIONS[practiceType]}
+                </span>
+              </div>
+              <span style={{ fontSize: '0.875rem', opacity: 0.8 }}>Change</span>
+            </button>
+          ) : (
+            // Expanded view - show all options
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {PRACTICE_TYPES.map((type) => (
+                <button
+                  key={type}
+                  onClick={() => {
+                    setPracticeType(type)
+                    setPracticeTypeExpanded(false)
+                  }}
+                  style={{
+                    padding: '14px 20px',
+                    borderRadius: '12px',
+                    border: practiceType === type ? '2px solid var(--accent)' : '1px solid var(--border)',
+                    backgroundColor: practiceType === type ? 'var(--accent)' : 'var(--surface)',
+                    color: practiceType === type ? 'var(--background)' : 'var(--foreground)',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontWeight: practiceType === type ? 500 : 400,
+                  }}
+                >
+                  <span style={{ display: 'block' }}>{practiceTypeLabels[type]}</span>
+                  <span style={{
+                    display: 'block',
+                    fontSize: '0.75rem',
+                    fontWeight: 400,
+                    marginTop: '4px',
+                    opacity: 0.8,
+                  }}>
+                    {PRACTICE_DESCRIPTIONS[type]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Interval Bells */}
         <div style={{ marginBottom: '40px' }}>
-          <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '12px' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '4px' }}>
             Interval Bells (optional)
           </label>
+          <p style={{ fontSize: '0.75rem', color: 'var(--muted)', marginBottom: '12px', opacity: 0.8 }}>
+            A gentle bell during your session to help maintain awareness
+          </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
             {[0, 5, 10, 15].map((mins) => (
               <button
