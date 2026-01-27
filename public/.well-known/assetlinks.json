@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.buddha_balla.twa",
+        "sha256_cert_fingerprints": ["59:57:28:57:0A:C0:EB:B0:05:7C:B5:6B:37:21:5D:3D:01:D6:56:FF:F2:8E:E2:81:E7:0D:DB:25:71:8B:4D:63"]
+      }
+    }]
