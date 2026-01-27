@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateSettings, exportUserData } from './actions'
+import { updateSettings, exportUserData, deleteAccount } from './actions'
 import { logout } from '@/app/(auth)/actions'
 import { PracticeType, practiceTypeLabels } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
@@ -34,6 +34,9 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
   const { theme, setTheme } = useTheme()
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default')
 
@@ -109,6 +112,23 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
     }
 
     setExporting(false)
+  }
+
+  const handleDelete = async () => {
+    if (deleteConfirmText !== 'DELETE') return
+
+    setDeleting(true)
+    setMessage(null)
+
+    const result = await deleteAccount()
+
+    if (result.error) {
+      setMessage({ type: 'error', text: result.error })
+      setDeleting(false)
+    } else {
+      // Redirect to home page after deletion
+      router.push('/')
+    }
   }
 
   return (
@@ -436,6 +456,102 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
         >
           {exporting ? 'Exporting...' : 'Export All Data'}
         </button>
+      </section>
+
+      {/* Delete Account Section */}
+      <section style={{
+        backgroundColor: 'var(--surface)',
+        borderRadius: '16px',
+        border: '1px solid var(--error)',
+        padding: '24px',
+      }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '8px', color: 'var(--error)' }}>
+          Delete Account
+        </h2>
+        <p style={{ color: 'var(--muted)', fontSize: '0.875rem', marginBottom: '16px' }}>
+          Permanently delete your account and all associated data. This action cannot be undone.
+        </p>
+
+        {!showDeleteConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowDeleteConfirm(true)}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '10px',
+              border: '1px solid var(--error)',
+              backgroundColor: 'transparent',
+              color: 'var(--error)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+            }}
+          >
+            Delete My Account
+          </button>
+        ) : (
+          <div style={{
+            padding: '16px',
+            backgroundColor: 'rgba(224, 85, 85, 0.1)',
+            borderRadius: '12px',
+          }}>
+            <p style={{ marginBottom: '12px', fontSize: '0.875rem' }}>
+              Type <strong>DELETE</strong> to confirm:
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--background)',
+                color: 'var(--foreground)',
+                marginBottom: '12px',
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={deleteConfirmText !== 'DELETE' || deleting}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: deleteConfirmText === 'DELETE' ? 'var(--error)' : 'var(--border)',
+                  color: deleteConfirmText === 'DELETE' ? 'white' : 'var(--muted)',
+                  cursor: deleteConfirmText === 'DELETE' && !deleting ? 'pointer' : 'not-allowed',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                {deleting ? 'Deleting...' : 'Permanently Delete'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setDeleteConfirmText('')
+                }}
+                style={{
+                  padding: '12px 24px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'transparent',
+                  color: 'var(--foreground)',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </section>
     </div>
   )

@@ -89,3 +89,55 @@ export async function exportUserData() {
 
   return { data: exportData }
 }
+
+export async function deleteAccount() {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+
+  // Delete all user data from each table
+  const { error: sessionsError } = await supabase
+    .from('meditation_sessions')
+    .delete()
+    .eq('user_id', user.id)
+
+  if (sessionsError) {
+    return { error: 'Failed to delete meditation sessions: ' + sessionsError.message }
+  }
+
+  const { error: entriesError } = await supabase
+    .from('journal_entries')
+    .delete()
+    .eq('user_id', user.id)
+
+  if (entriesError) {
+    return { error: 'Failed to delete journal entries: ' + entriesError.message }
+  }
+
+  const { error: conversationsError } = await supabase
+    .from('teacher_conversations')
+    .delete()
+    .eq('user_id', user.id)
+
+  if (conversationsError) {
+    return { error: 'Failed to delete conversations: ' + conversationsError.message }
+  }
+
+  const { error: settingsError } = await supabase
+    .from('user_settings')
+    .delete()
+    .eq('user_id', user.id)
+
+  if (settingsError) {
+    return { error: 'Failed to delete settings: ' + settingsError.message }
+  }
+
+  // Sign out the user
+  await supabase.auth.signOut()
+
+  return { success: true }
+}
