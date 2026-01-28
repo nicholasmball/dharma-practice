@@ -80,7 +80,7 @@ src/
 - `started_at` (timestamp)
 - `ended_at` (timestamp)
 - `duration_seconds` (integer)
-- `practice_type` (text: shamatha, vipashyana, mahamudra, dzogchen, other)
+- `practice_type` (text) - Built-in types: shamatha, vipashyana, mahamudra, dzogchen, other. Also accepts custom types.
 - `completed` (boolean)
 - `notes` (text, optional)
 - `created_at` (timestamp)
@@ -91,7 +91,7 @@ src/
 - `title` (text, optional)
 - `content` (text)
 - `tags` (text array)
-- `practice_type` (text, optional)
+- `practice_type` (text, optional) - Accepts built-in or custom types
 - `created_at` (timestamp)
 - `updated_at` (timestamp)
 
@@ -155,8 +155,8 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 ### Practice Journal
 - Rich text entries
 - Tags (custom + suggested)
-- Practice type association
-- Search and filter
+- Practice type association (including custom types)
+- Search and filter (by text, tags, or practice type)
 - Edit and delete
 - Auto-created entries from session notes tagged with "session notes"
 
@@ -168,7 +168,7 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 - Practice type breakdown
 
 ### AI Meditation Teacher
-- Claude-powered chat
+- Claude-powered chat (model configurable via `CLAUDE_MODEL` env var, defaults to Sonnet)
 - Mahamudra/Dzogchen expertise
 - Access to user's practice history for personalized guidance
 - System prompt in `/api/chat/route.ts`
@@ -251,8 +251,15 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 ```
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 ANTHROPIC_API_KEY=your_anthropic_api_key
+CLAUDE_MODEL=claude-opus-4-20250514  # Optional, defaults to claude-sonnet-4-20250514
 ```
+
+**Available Claude models:**
+- `claude-opus-4-20250514` - Most capable, higher cost
+- `claude-sonnet-4-20250514` - Balanced (default)
+- `claude-haiku-3-5-20241022` - Fastest, lowest cost
 
 ## Design System
 
