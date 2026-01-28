@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Dharma Practice
 
-## Getting Started
+A meditation practice companion app for Buddhist practitioners, featuring a meditation timer, practice journal, statistics tracking, and an AI meditation teacher.
 
-First, run the development server:
+**Live at:** [buddha-balla.com](https://buddha-balla.com)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Meditation Timer
+- Duration presets (10, 20, 30, 45, 60 minutes) or custom duration
+- Practice type selection (Shamatha, Vipashyana, Mahamudra, Dzogchen, or custom types)
+- Optional interval bells during sessions
+- Singing bowl sounds at start and end
+- Screen stays awake during meditation
+- Session notes that auto-create journal entries
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Practice Journal
+- Write reflections on your practice
+- Tag entries for easy organization
+- Associate entries with practice types
+- Search and filter by text, tags, or practice type
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Statistics Dashboard
+- Track your meditation streaks
+- View practice time summaries (daily, weekly, monthly, all-time)
+- See practice type breakdown
+- 30-day activity chart
 
-## Learn More
+### AI Meditation Teacher
+- Chat with a Claude-powered meditation teacher
+- Expertise in Mahamudra and Dzogchen traditions
+- Personalized guidance based on your practice history
+- Conversation history saved for continuity
 
-To learn more about Next.js, take a look at the following resources:
+### Additional Features
+- Custom practice types - add your own meditation styles
+- Dark and light themes
+- Daily meditation and journal reminders
+- Data export (JSON)
+- Works offline (PWA)
+- Installable on mobile and desktop
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Tech Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Framework:** Next.js 16 (App Router)
+- **Language:** TypeScript
+- **Database:** Supabase (PostgreSQL)
+- **Authentication:** Supabase Auth
+- **AI:** Anthropic Claude API
+- **Hosting:** Vercel
 
-## Deploy on Vercel
+## Local Development
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Prerequisites
+- Node.js 18+
+- npm
+- Supabase account
+- Anthropic API key
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/nicholasmball/dharma-practice.git
+   cd dharma-practice
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create a `.env.local` file with your credentials:
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   CLAUDE_MODEL=claude-sonnet-4-20250514  # Optional
+   ```
+
+4. Set up the database tables in Supabase (see `CLAUDE.md` for schema details)
+
+5. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+6. Open [http://localhost:3000](http://localhost:3000)
+
+## License
+
+This project is for personal use. Feel free to fork and adapt for your own practice.
+
+## Author
+
+**Nicholas Ball** - Built for personal use and to share with others interested in meditation practice.
