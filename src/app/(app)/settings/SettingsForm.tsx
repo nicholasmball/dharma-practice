@@ -2,12 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { updateSettings, exportUserData, deleteAccount } from './actions'
+import { updateSettings, exportUserData, deleteAccount, saveCustomPracticeTypes } from './actions'
 import { logout } from '@/app/(auth)/actions'
-import { PracticeType, practiceTypeLabels } from '@/lib/types'
+import { BuiltInPracticeType, CustomPracticeType, practiceTypeLabels, BUILT_IN_PRACTICE_TYPES } from '@/lib/types'
 import { useTheme } from '@/components/ThemeProvider'
-
-const PRACTICE_TYPES: PracticeType[] = ['shamatha', 'vipashyana', 'mahamudra', 'dzogchen', 'other']
 
 const DURATION_OPTIONS = [
   { value: 600, label: '10 minutes' },
@@ -25,6 +23,7 @@ interface SettingsFormProps {
     journal_reminder_time: string | null
     default_session_duration: number
     default_practice_type: string
+    custom_practice_types?: CustomPracticeType[]
   } | null
   userEmail: string
 }
@@ -47,6 +46,12 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
   const [journalReminderTime, setJournalReminderTime] = useState(initialSettings?.journal_reminder_time || '21:00')
   const [defaultDuration, setDefaultDuration] = useState(initialSettings?.default_session_duration || 1200)
   const [defaultPracticeType, setDefaultPracticeType] = useState(initialSettings?.default_practice_type || 'shamatha')
+
+  // Custom practice types state
+  const [customTypes, setCustomTypes] = useState<CustomPracticeType[]>(initialSettings?.custom_practice_types || [])
+  const [newTypeName, setNewTypeName] = useState('')
+  const [newTypeDescription, setNewTypeDescription] = useState('')
+  const [savingCustomTypes, setSavingCustomTypes] = useState(false)
 
   useEffect(() => {
     if ('Notification' in window) {
@@ -129,6 +134,79 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
       // Redirect to home page after deletion
       router.push('/')
     }
+  }
+
+  const handleAddCustomType = async () => {
+    const trimmedName = newTypeName.trim()
+    if (!trimmedName) return
+
+    // Check for duplicates (case-insensitive)
+    const existsInBuiltIn = BUILT_IN_PRACTICE_TYPES.some(
+      t => t.toLowerCase() === trimmedName.toLowerCase()
+    )
+    const existsInCustom = customTypes.some(
+      ct => ct.name.toLowerCase() === trimmedName.toLowerCase()
+    )
+
+    if (existsInBuiltIn || existsInCustom) {
+      setMessage({ type: 'error', text: 'A practice type with this name already exists.' })
+      return
+    }
+
+    const newType: CustomPracticeType = {
+      name: trimmedName,
+      description: newTypeDescription.trim() || undefined,
+    }
+
+    const updatedTypes = [...customTypes, newType]
+    setSavingCustomTypes(true)
+    setMessage(null)
+
+    const result = await saveCustomPracticeTypes(updatedTypes)
+
+    if (result.error) {
+      setMessage({ type: 'error', text: result.error })
+    } else {
+      setCustomTypes(updatedTypes)
+      setNewTypeName('')
+      setNewTypeDescription('')
+      setMessage({ type: 'success', text: 'Custom practice type added!' })
+    }
+
+    setSavingCustomTypes(false)
+  }
+
+  const handleDeleteCustomType = async (nameToDelete: string) => {
+    const updatedTypes = customTypes.filter(ct => ct.name !== nameToDelete)
+    setSavingCustomTypes(true)
+    setMessage(null)
+
+    const result = await saveCustomPracticeTypes(updatedTypes)
+
+    if (result.error) {
+      setMessage({ type: 'error', text: result.error })
+    } else {
+      setCustomTypes(updatedTypes)
+      // If the deleted type was the default, reset to shamatha
+      if (defaultPracticeType.toLowerCase() === nameToDelete.toLowerCase()) {
+        setDefaultPracticeType('shamatha')
+      }
+      setMessage({ type: 'success', text: 'Custom practice type removed.' })
+    }
+
+    setSavingCustomTypes(false)
+  }
+
+  // Helper to get label for any practice type
+  const getPracticeLabel = (type: string): string => {
+    if (type in practiceTypeLabels) {
+      return practiceTypeLabels[type as BuiltInPracticeType]
+    }
+    const customType = customTypes.find(ct => ct.name.toLowerCase() === type.toLowerCase())
+    if (customType) {
+      return customType.name
+    }
+    return type.charAt(0).toUpperCase() + type.slice(1)
   }
 
   return (
@@ -282,10 +360,132 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
               cursor: 'pointer',
             }}
           >
-            {PRACTICE_TYPES.map(type => (
+            {BUILT_IN_PRACTICE_TYPES.filter(t => t !== 'other').map(type => (
               <option key={type} value={type}>{practiceTypeLabels[type]}</option>
             ))}
+            {customTypes.length > 0 && (
+              <option disabled>──────────</option>
+            )}
+            {customTypes.map(ct => (
+              <option key={ct.name} value={ct.name.toLowerCase()}>{ct.name}</option>
+            ))}
+            <option value="other">{practiceTypeLabels['other']}</option>
           </select>
+        </div>
+      </section>
+
+      {/* Custom Practice Types Section */}
+      <section style={{
+        backgroundColor: 'var(--surface)',
+        borderRadius: '16px',
+        border: '1px solid var(--border)',
+        padding: '24px',
+      }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '8px' }}>Custom Practice Types</h2>
+        <p style={{ color: 'var(--muted)', fontSize: '0.875rem', marginBottom: '20px' }}>
+          Add your own meditation practice types (e.g., Jhana, Tonglen, Metta).
+        </p>
+
+        {/* Existing custom types */}
+        {customTypes.length > 0 && (
+          <div style={{ marginBottom: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {customTypes.map(ct => (
+                <div
+                  key={ct.name}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '12px 16px',
+                    backgroundColor: 'var(--background)',
+                    borderRadius: '10px',
+                    border: '1px solid var(--border)',
+                  }}
+                >
+                  <div>
+                    <span style={{ fontWeight: 500 }}>{ct.name}</span>
+                    {ct.description && (
+                      <span style={{ color: 'var(--muted)', fontSize: '0.875rem', marginLeft: '8px' }}>
+                        — {ct.description}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCustomType(ct.name)}
+                    disabled={savingCustomTypes}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--error)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--error)',
+                      cursor: savingCustomTypes ? 'not-allowed' : 'pointer',
+                      fontSize: '0.75rem',
+                      opacity: savingCustomTypes ? 0.5 : 1,
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Add new custom type */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              placeholder="Name (e.g., Jhana)"
+              value={newTypeName}
+              onChange={(e) => setNewTypeName(e.target.value)}
+              style={{
+                flex: '1 1 150px',
+                minWidth: '150px',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--background)',
+                color: 'var(--foreground)',
+                outline: 'none',
+              }}
+            />
+            <input
+              type="text"
+              placeholder="Description (optional)"
+              value={newTypeDescription}
+              onChange={(e) => setNewTypeDescription(e.target.value)}
+              style={{
+                flex: '2 1 200px',
+                minWidth: '200px',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--background)',
+                color: 'var(--foreground)',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="button"
+              onClick={handleAddCustomType}
+              disabled={!newTypeName.trim() || savingCustomTypes}
+              style={{
+                padding: '12px 24px',
+                borderRadius: '10px',
+                border: 'none',
+                backgroundColor: newTypeName.trim() && !savingCustomTypes ? 'var(--accent)' : 'var(--border)',
+                color: newTypeName.trim() && !savingCustomTypes ? 'var(--background)' : 'var(--muted)',
+                cursor: newTypeName.trim() && !savingCustomTypes ? 'pointer' : 'not-allowed',
+                fontWeight: 500,
+              }}
+            >
+              {savingCustomTypes ? 'Adding...' : 'Add'}
+            </button>
+          </div>
         </div>
       </section>
 

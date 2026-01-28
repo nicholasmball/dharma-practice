@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { JournalEntry } from '@/lib/types'
+import { JournalEntry, CustomPracticeType } from '@/lib/types'
 import JournalList from './JournalList'
 
 export default async function JournalPage({
@@ -11,12 +11,23 @@ export default async function JournalPage({
   const params = await searchParams
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+
   let query = supabase
     .from('journal_entries')
     .select('*')
     .order('created_at', { ascending: false })
 
   const { data: entries } = await query
+
+  // Get custom practice types from user settings
+  const { data: settings } = await supabase
+    .from('user_settings')
+    .select('custom_practice_types')
+    .eq('user_id', user?.id)
+    .single()
+
+  const customPracticeTypes = (settings?.custom_practice_types as CustomPracticeType[]) || []
 
   // Get all unique tags for filtering
   const allTags = new Set<string>()
@@ -49,6 +60,7 @@ export default async function JournalPage({
         initialSearch={params.search}
         initialTag={params.tag}
         initialType={params.type}
+        customPracticeTypes={customPracticeTypes}
       />
     </div>
   )

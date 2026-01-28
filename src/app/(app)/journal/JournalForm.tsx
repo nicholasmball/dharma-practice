@@ -2,10 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { PracticeType, practiceTypeLabels } from '@/lib/types'
+import { CustomPracticeType, practiceTypeLabels, BUILT_IN_PRACTICE_TYPES } from '@/lib/types'
 import { createJournalEntry, updateJournalEntry } from './actions'
-
-const PRACTICE_TYPES: PracticeType[] = ['shamatha', 'vipashyana', 'mahamudra', 'dzogchen', 'other']
 
 const SUGGESTED_TAGS = [
   'insight', 'difficulty', 'breakthrough', 'question', 'dream',
@@ -18,17 +16,18 @@ interface JournalFormProps {
     title: string | null
     content: string
     tags: string[]
-    practice_type: PracticeType | null
+    practice_type: string | null
   }
+  customPracticeTypes?: CustomPracticeType[]
 }
 
-export default function JournalForm({ initialData }: JournalFormProps) {
+export default function JournalForm({ initialData, customPracticeTypes = [] }: JournalFormProps) {
   const router = useRouter()
   const [title, setTitle] = useState(initialData?.title || '')
   const [content, setContent] = useState(initialData?.content || '')
   const [tags, setTags] = useState<string[]>(initialData?.tags || [])
   const [newTag, setNewTag] = useState('')
-  const [practiceType, setPracticeType] = useState<PracticeType | ''>(initialData?.practice_type || '')
+  const [practiceType, setPracticeType] = useState<string>(initialData?.practice_type || '')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -168,7 +167,8 @@ export default function JournalForm({ initialData }: JournalFormProps) {
           >
             None
           </button>
-          {PRACTICE_TYPES.map(type => (
+          {/* Built-in types (except 'other') */}
+          {BUILT_IN_PRACTICE_TYPES.filter(t => t !== 'other').map(type => (
             <button
               key={type}
               type="button"
@@ -186,6 +186,44 @@ export default function JournalForm({ initialData }: JournalFormProps) {
               {practiceTypeLabels[type].split(' (')[0]}
             </button>
           ))}
+          {/* Custom types */}
+          {customPracticeTypes.map(ct => {
+            const typeKey = ct.name.toLowerCase()
+            return (
+              <button
+                key={ct.name}
+                type="button"
+                onClick={() => setPracticeType(typeKey)}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  border: practiceType === typeKey ? '2px solid var(--accent)' : '1px solid var(--border)',
+                  backgroundColor: practiceType === typeKey ? 'var(--accent)' : 'var(--surface)',
+                  color: practiceType === typeKey ? 'var(--background)' : 'var(--foreground)',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                {ct.name}
+              </button>
+            )
+          })}
+          {/* Other always last */}
+          <button
+            type="button"
+            onClick={() => setPracticeType('other')}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '10px',
+              border: practiceType === 'other' ? '2px solid var(--accent)' : '1px solid var(--border)',
+              backgroundColor: practiceType === 'other' ? 'var(--accent)' : 'var(--surface)',
+              color: practiceType === 'other' ? 'var(--background)' : 'var(--foreground)',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+            }}
+          >
+            {practiceTypeLabels['other']}
+          </button>
         </div>
       </div>
 

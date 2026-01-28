@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { saveSession } from './actions'
-import { PracticeType, practiceTypeLabels } from '@/lib/types'
+import { BuiltInPracticeType, CustomPracticeType, practiceTypeLabels, BUILT_IN_PRACTICE_TYPES, getPracticeTypeLabel } from '@/lib/types'
 
 const DURATION_PRESETS = [
   { label: '10 min', seconds: 600 },
@@ -13,9 +13,7 @@ const DURATION_PRESETS = [
   { label: '60 min', seconds: 3600 },
 ]
 
-const PRACTICE_TYPES: PracticeType[] = ['shamatha', 'vipashyana', 'mahamudra', 'dzogchen', 'other']
-
-const PRACTICE_DESCRIPTIONS: Record<PracticeType, string> = {
+const PRACTICE_DESCRIPTIONS: Record<BuiltInPracticeType, string> = {
   shamatha: 'Focusing on the breath to settle the mind',
   vipashyana: 'Investigating the nature of experience',
   mahamudra: 'Resting in the natural state of mind',
@@ -28,14 +26,29 @@ type TimerState = 'setup' | 'running' | 'paused' | 'completed'
 interface TimerClientProps {
   defaultDuration: number
   defaultPracticeType: string
+  customPracticeTypes: CustomPracticeType[]
 }
 
-export default function TimerClient({ defaultDuration, defaultPracticeType }: TimerClientProps) {
+export default function TimerClient({ defaultDuration, defaultPracticeType, customPracticeTypes }: TimerClientProps) {
   const router = useRouter()
   const [timerState, setTimerState] = useState<TimerState>('setup')
   const [selectedDuration, setSelectedDuration] = useState(defaultDuration)
   const [customMinutes, setCustomMinutes] = useState('')
-  const [practiceType, setPracticeType] = useState<PracticeType>(defaultPracticeType as PracticeType)
+  const [practiceType, setPracticeType] = useState<string>(defaultPracticeType)
+
+  // Helper to get description for any practice type
+  const getDescription = (type: string): string => {
+    if (type in PRACTICE_DESCRIPTIONS) {
+      return PRACTICE_DESCRIPTIONS[type as BuiltInPracticeType]
+    }
+    const customType = customPracticeTypes.find(ct => ct.name.toLowerCase() === type.toLowerCase())
+    return customType?.description || ''
+  }
+
+  // Helper to get label for any practice type
+  const getLabel = (type: string): string => {
+    return getPracticeTypeLabel(type, customPracticeTypes)
+  }
   const [timeRemaining, setTimeRemaining] = useState(defaultDuration)
   const [startTime, setStartTime] = useState<number | null>(null) // Timestamp when timer started
   const [pausedTimeRemaining, setPausedTimeRemaining] = useState<number | null>(null) // Time left when paused
@@ -281,8 +294,8 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
             {prepCountdown}
           </span>
         </div>
-        <p style={{ color: 'var(--muted)', marginTop: '24px', textTransform: 'capitalize' }}>
-          {practiceTypeLabels[practiceType]} · {Math.floor(selectedDuration / 60)} min
+        <p style={{ color: 'var(--muted)', marginTop: '24px' }}>
+          {getLabel(practiceType)} · {Math.floor(selectedDuration / 60)} min
         </p>
       </div>
     )
@@ -380,17 +393,20 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
               }}
             >
               <div>
-                <span style={{ display: 'block', fontWeight: 500 }}>{practiceTypeLabels[practiceType]}</span>
-                <span style={{ display: 'block', fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}>
-                  {PRACTICE_DESCRIPTIONS[practiceType]}
-                </span>
+                <span style={{ display: 'block', fontWeight: 500 }}>{getLabel(practiceType)}</span>
+                {getDescription(practiceType) && (
+                  <span style={{ display: 'block', fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}>
+                    {getDescription(practiceType)}
+                  </span>
+                )}
               </div>
               <span style={{ fontSize: '0.875rem', opacity: 0.8 }}>Change</span>
             </button>
           ) : (
             // Expanded view - show all options
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {PRACTICE_TYPES.map((type) => (
+              {/* Built-in types (except 'other') */}
+              {BUILT_IN_PRACTICE_TYPES.filter(t => t !== 'other').map((type) => (
                 <button
                   key={type}
                   onClick={() => {
@@ -420,6 +436,83 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
                   </span>
                 </button>
               ))}
+
+              {/* Custom types */}
+              {customPracticeTypes.length > 0 && (
+                <>
+                  <div style={{
+                    borderTop: '1px solid var(--border)',
+                    margin: '8px 0',
+                    paddingTop: '8px',
+                  }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Custom Types</span>
+                  </div>
+                  {customPracticeTypes.map((ct) => {
+                    const typeKey = ct.name.toLowerCase()
+                    return (
+                      <button
+                        key={ct.name}
+                        onClick={() => {
+                          setPracticeType(typeKey)
+                          setPracticeTypeExpanded(false)
+                        }}
+                        style={{
+                          padding: '14px 20px',
+                          borderRadius: '12px',
+                          border: practiceType === typeKey ? '2px solid var(--accent)' : '1px solid var(--border)',
+                          backgroundColor: practiceType === typeKey ? 'var(--accent)' : 'var(--surface)',
+                          color: practiceType === typeKey ? 'var(--background)' : 'var(--foreground)',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          fontWeight: practiceType === typeKey ? 500 : 400,
+                        }}
+                      >
+                        <span style={{ display: 'block' }}>{ct.name}</span>
+                        {ct.description && (
+                          <span style={{
+                            display: 'block',
+                            fontSize: '0.75rem',
+                            fontWeight: 400,
+                            marginTop: '4px',
+                            opacity: 0.8,
+                          }}>
+                            {ct.description}
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
+                </>
+              )}
+
+              {/* 'Other' always last */}
+              <button
+                onClick={() => {
+                  setPracticeType('other')
+                  setPracticeTypeExpanded(false)
+                }}
+                style={{
+                  padding: '14px 20px',
+                  borderRadius: '12px',
+                  border: practiceType === 'other' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                  backgroundColor: practiceType === 'other' ? 'var(--accent)' : 'var(--surface)',
+                  color: practiceType === 'other' ? 'var(--background)' : 'var(--foreground)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  fontWeight: practiceType === 'other' ? 500 : 400,
+                }}
+              >
+                <span style={{ display: 'block' }}>{practiceTypeLabels['other']}</span>
+                <span style={{
+                  display: 'block',
+                  fontSize: '0.75rem',
+                  fontWeight: 400,
+                  marginTop: '4px',
+                  opacity: 0.8,
+                }}>
+                  {PRACTICE_DESCRIPTIONS['other']}
+                </span>
+              </button>
             </div>
           )}
         </div>
@@ -494,8 +587,8 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
           <p style={{ fontSize: '4rem', fontWeight: 300, fontFamily: 'monospace' }}>
             {formatTime(timeRemaining)}
           </p>
-          <p style={{ color: 'var(--muted)', fontSize: '0.875rem', textTransform: 'capitalize' }}>
-            {practiceType}
+          <p style={{ color: 'var(--muted)', fontSize: '0.875rem' }}>
+            {getLabel(practiceType)}
           </p>
         </div>
 
@@ -575,7 +668,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
         Session Complete
       </h1>
       <p style={{ color: 'var(--muted)', marginBottom: '32px' }}>
-        {Math.floor(selectedDuration / 60)} minutes of {practiceType}
+        {Math.floor(selectedDuration / 60)} minutes of {getLabel(practiceType)}
       </p>
 
       {/* Notes */}

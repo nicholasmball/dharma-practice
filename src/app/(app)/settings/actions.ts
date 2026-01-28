@@ -2,6 +2,68 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { CustomPracticeType } from '@/lib/types'
+
+export async function getCustomPracticeTypes(): Promise<CustomPracticeType[]> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return []
+  }
+
+  const { data: settings } = await supabase
+    .from('user_settings')
+    .select('custom_practice_types')
+    .eq('user_id', user.id)
+    .single()
+
+  return (settings?.custom_practice_types as CustomPracticeType[]) || []
+}
+
+export async function saveCustomPracticeTypes(customTypes: CustomPracticeType[]) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+
+  // Check if settings exist
+  const { data: existing } = await supabase
+    .from('user_settings')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (existing) {
+    const { error } = await supabase
+      .from('user_settings')
+      .update({
+        custom_practice_types: customTypes,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', user.id)
+
+    if (error) return { error: error.message }
+  } else {
+    const { error } = await supabase
+      .from('user_settings')
+      .insert({
+        user_id: user.id,
+        custom_practice_types: customTypes,
+      })
+
+    if (error) return { error: error.message }
+  }
+
+  revalidatePath('/settings')
+  revalidatePath('/timer')
+  revalidatePath('/journal')
+  return { success: true }
+}
 
 export async function updateSettings(data: {
   meditation_reminder_enabled: boolean

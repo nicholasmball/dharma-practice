@@ -2,11 +2,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
-import { PracticeType, practiceTypeLabels } from '@/lib/types'
+import { BuiltInPracticeType, practiceTypeLabels, BUILT_IN_PRACTICE_TYPES, CustomPracticeType } from '@/lib/types'
 
 export async function saveSession(data: {
   duration_seconds: number
-  practice_type: PracticeType
+  practice_type: string
   notes?: string
 }) {
   const supabase = await createClient()
@@ -44,8 +44,23 @@ export async function saveSession(data: {
       year: 'numeric',
     })
 
-    // Get the short practice type name (e.g., "Shamatha" not "Shamatha (Calm Abiding)")
-    const practiceTypeName = practiceTypeLabels[data.practice_type].split(' (')[0]
+    // Get the short practice type name
+    let practiceTypeName: string
+    if (BUILT_IN_PRACTICE_TYPES.includes(data.practice_type as BuiltInPracticeType)) {
+      // Built-in type: use the label
+      practiceTypeName = practiceTypeLabels[data.practice_type as BuiltInPracticeType].split(' (')[0]
+    } else {
+      // Custom type: fetch from settings to get proper capitalization
+      const { data: settings } = await supabase
+        .from('user_settings')
+        .select('custom_practice_types')
+        .eq('user_id', user.id)
+        .single()
+
+      const customTypes = (settings?.custom_practice_types as CustomPracticeType[]) || []
+      const customType = customTypes.find(ct => ct.name.toLowerCase() === data.practice_type.toLowerCase())
+      practiceTypeName = customType?.name || (data.practice_type.charAt(0).toUpperCase() + data.practice_type.slice(1))
+    }
 
     const title = `${practiceTypeName} - ${dateStr} - ${durationMinutes} min`
 

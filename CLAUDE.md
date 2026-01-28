@@ -104,6 +104,7 @@ src/
 - `journal_reminder_time` (time)
 - `default_session_duration` (integer, seconds)
 - `default_practice_type` (text)
+- `custom_practice_types` (jsonb) - Array of {name, description?} objects for custom practice types
 - `created_at` (timestamp)
 - `updated_at` (timestamp)
 
@@ -141,6 +142,7 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 ### Meditation Timer
 - Duration presets (10, 20, 30, 45, 60 min) + custom
 - Practice type selection with descriptions (collapsible)
+- **Custom practice types** - Users can add their own types (e.g., Jhana, Tonglen) in Settings
 - Interval bells (optional, with explanation)
 - Start/pause/resume/end controls
 - **5-second preparation countdown** before session starts

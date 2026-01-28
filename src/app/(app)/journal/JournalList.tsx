@@ -2,10 +2,8 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { JournalEntry, PracticeType, practiceTypeLabels } from '@/lib/types'
+import { JournalEntry, BuiltInPracticeType, CustomPracticeType, practiceTypeLabels, BUILT_IN_PRACTICE_TYPES, getPracticeTypeLabel } from '@/lib/types'
 import { deleteJournalEntry } from './actions'
-
-const PRACTICE_TYPES: (PracticeType | 'all')[] = ['all', 'shamatha', 'vipashyana', 'mahamudra', 'dzogchen', 'other']
 
 export default function JournalList({
   entries,
@@ -13,12 +11,14 @@ export default function JournalList({
   initialSearch,
   initialTag,
   initialType,
+  customPracticeTypes = [],
 }: {
   entries: JournalEntry[]
   allTags: string[]
   initialSearch?: string
   initialTag?: string
   initialType?: string
+  customPracticeTypes?: CustomPracticeType[]
 }) {
   const [search, setSearch] = useState(initialSearch || '')
   const [selectedTag, setSelectedTag] = useState(initialTag || '')
@@ -106,11 +106,20 @@ export default function JournalList({
             }}
           >
             <option value="all">All Practice Types</option>
-            {PRACTICE_TYPES.filter(t => t !== 'all').map(type => (
+            {BUILT_IN_PRACTICE_TYPES.filter(t => t !== 'other').map(type => (
               <option key={type} value={type}>
-                {practiceTypeLabels[type as PracticeType]}
+                {practiceTypeLabels[type]}
               </option>
             ))}
+            {customPracticeTypes.length > 0 && (
+              <option disabled>──────────</option>
+            )}
+            {customPracticeTypes.map(ct => (
+              <option key={ct.name} value={ct.name.toLowerCase()}>
+                {ct.name}
+              </option>
+            ))}
+            <option value="other">{practiceTypeLabels['other']}</option>
           </select>
 
           {/* Tag Filter */}
@@ -223,10 +232,10 @@ export default function JournalList({
                   </p>
                 )}
 
-                {/* Tags */}
-                {entry.tags && entry.tags.length > 0 && (
+                {/* Tags and Practice Type */}
+                {((entry.tags && entry.tags.length > 0) || entry.practice_type) && (
                   <div style={{ display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap' }}>
-                    {entry.tags.map(tag => (
+                    {entry.tags?.map(tag => (
                       <span
                         key={tag}
                         style={{
@@ -248,10 +257,9 @@ export default function JournalList({
                           backgroundColor: 'var(--accent)',
                           color: 'var(--background)',
                           fontSize: '0.75rem',
-                          textTransform: 'capitalize',
                         }}
                       >
-                        {entry.practice_type}
+                        {getPracticeTypeLabel(entry.practice_type, customPracticeTypes)}
                       </span>
                     )}
                   </div>
