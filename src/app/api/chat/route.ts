@@ -97,7 +97,7 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
     }
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
       max_tokens: 1024,
       system: SYSTEM_PROMPT + contextMessage,
       messages: messages.map((m: { role: string; content: string }) => ({
