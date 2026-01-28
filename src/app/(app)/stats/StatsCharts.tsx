@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { practiceTypeLabels, PracticeType } from '@/lib/types'
 
 const PRACTICE_COLORS: Record<PracticeType, string> = {
@@ -17,7 +18,13 @@ interface StatsChartsProps {
 }
 
 export default function StatsCharts({ dailyData, practiceBreakdown, totalSessions }: StatsChartsProps) {
-  const maxMinutes = Math.max(...dailyData.map(d => d.minutes), 1)
+  // Memoize calculations to avoid recalculating on every render
+  const maxMinutes = useMemo(() => Math.max(...dailyData.map(d => d.minutes), 1), [dailyData])
+
+  const sortedBreakdown = useMemo(() =>
+    Object.entries(practiceBreakdown).sort((a, b) => b[1] - a[1]),
+    [practiceBreakdown]
+  )
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-3 md:gap-4">
@@ -79,9 +86,7 @@ export default function StatsCharts({ dailyData, practiceBreakdown, totalSession
           Practice Types
         </h2>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {Object.entries(practiceBreakdown)
-            .sort((a, b) => b[1] - a[1])
-            .map(([type, count]) => {
+          {sortedBreakdown.map(([type, count]) => {
               const percentage = Math.round((count / totalSessions) * 100)
               const color = PRACTICE_COLORS[type as PracticeType] || PRACTICE_COLORS.other
               return (

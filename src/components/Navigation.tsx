@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { logout } from '@/app/(auth)/actions'
 
 const navItems = [
@@ -15,6 +15,7 @@ const navItems = [
 
 export default function Navigation() {
   const pathname = usePathname()
+  const router = useRouter()
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 md:top-0 md:left-0 md:right-auto md:bottom-0 md:w-20 bg-[var(--surface)] border-t md:border-t-0 md:border-r border-[var(--border)] z-50">
@@ -31,6 +32,7 @@ export default function Navigation() {
             <Link
               key={item.href}
               href={item.href}
+              onMouseEnter={() => router.prefetch(item.href)}
               className={`flex flex-col items-center justify-center p-1.5 md:p-3 md:mb-2 rounded-xl transition-colors min-w-0 ${
                 isActive
                   ? 'text-[var(--accent)] bg-[var(--accent)]/10'

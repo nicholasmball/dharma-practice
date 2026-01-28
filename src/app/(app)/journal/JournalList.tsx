@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { JournalEntry, PracticeType, practiceTypeLabels } from '@/lib/types'
 import { deleteJournalEntry } from './actions'
@@ -26,25 +26,27 @@ export default function JournalList({
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
 
-  // Filter entries
-  const filteredEntries = entries.filter(entry => {
-    // Search filter
-    if (search) {
-      const searchLower = search.toLowerCase()
-      const matchesTitle = entry.title?.toLowerCase().includes(searchLower)
-      const matchesContent = entry.content.toLowerCase().includes(searchLower)
-      const matchesTags = entry.tags?.some(tag => tag.toLowerCase().includes(searchLower))
-      if (!matchesTitle && !matchesContent && !matchesTags) return false
-    }
+  // Filter entries - memoized to avoid recalculating on every render
+  const filteredEntries = useMemo(() => {
+    return entries.filter(entry => {
+      // Search filter
+      if (search) {
+        const searchLower = search.toLowerCase()
+        const matchesTitle = entry.title?.toLowerCase().includes(searchLower)
+        const matchesContent = entry.content.toLowerCase().includes(searchLower)
+        const matchesTags = entry.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+        if (!matchesTitle && !matchesContent && !matchesTags) return false
+      }
 
-    // Tag filter
-    if (selectedTag && !entry.tags?.includes(selectedTag)) return false
+      // Tag filter
+      if (selectedTag && !entry.tags?.includes(selectedTag)) return false
 
-    // Type filter
-    if (selectedType !== 'all' && entry.practice_type !== selectedType) return false
+      // Type filter
+      if (selectedType !== 'all' && entry.practice_type !== selectedType) return false
 
-    return true
-  })
+      return true
+    })
+  }, [entries, search, selectedTag, selectedType])
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this entry?')) return
