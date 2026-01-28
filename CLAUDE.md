@@ -217,10 +217,26 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 - Build uses webpack (`next build --webpack`) for PWA compatibility
 
 ### Android App (Google Play Store)
-- PWA wrapped using PWABuilder
-- **Digital Asset Links** at `/.well-known/assetlinks.json`
-- App signing keystore (keep backup safe - required for updates)
-- Closed testing set up before production release
+- PWA wrapped using PWABuilder (https://pwabuilder.com)
+- **Digital Asset Links** at `/.well-known/assetlinks.json` - links website to Android app
+- **Package ID:** com.anthropic.pwa.xxx (set during PWABuilder export)
+
+**Generated files (keep backups!):**
+- `Buddha-Balla.aab` - Upload to Play Store
+- `Buddha-Balla.apk` - For direct testing
+- `signing.keystore` - **CRITICAL: Required for all future app updates**
+- `signing-key-info.txt` - Keystore password
+
+**Play Store requirements completed:**
+- Privacy policy at `/privacy`
+- Delete account functionality in Settings
+- App screenshots in `/public/screenshots/`
+- Feature graphic (1024x500) created via `/public/feature-graphic.html`
+
+**Play Store status:**
+- Developer account created (requires identity verification: 1-3 days)
+- Closed testing track configured
+- Waiting for identity approval before first release
 
 ### Mobile Responsive
 - **Navigation**: Bottom bar on mobile, sidebar on desktop
