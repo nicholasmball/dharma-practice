@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 export async function updateSettings(data: {
@@ -136,7 +136,15 @@ export async function deleteAccount() {
     return { error: 'Failed to delete settings: ' + settingsError.message }
   }
 
-  // Sign out the user
+  // Delete the user from Supabase Auth using admin client
+  const adminClient = createAdminClient()
+  const { error: deleteUserError } = await adminClient.auth.admin.deleteUser(user.id)
+
+  if (deleteUserError) {
+    return { error: 'Failed to delete user account: ' + deleteUserError.message }
+  }
+
+  // Sign out the user (clears local session)
   await supabase.auth.signOut()
 
   return { success: true }
