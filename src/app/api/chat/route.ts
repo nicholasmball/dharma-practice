@@ -96,8 +96,11 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
       contextMessage += '\n[END CONTEXT]\n'
     }
 
+    const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514'
+    console.log('Using Claude model:', model)
+
     const response = await client.messages.create({
-      model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514',
+      model,
       max_tokens: 1024,
       system: SYSTEM_PROMPT + contextMessage,
       messages: messages.map((m: { role: string; content: string }) => ({
