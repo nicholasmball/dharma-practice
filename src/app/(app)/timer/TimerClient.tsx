@@ -37,6 +37,8 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
   const [customMinutes, setCustomMinutes] = useState('')
   const [practiceType, setPracticeType] = useState<PracticeType>(defaultPracticeType as PracticeType)
   const [timeRemaining, setTimeRemaining] = useState(defaultDuration)
+  const [startTime, setStartTime] = useState<number | null>(null) // Timestamp when timer started
+  const [pausedTimeRemaining, setPausedTimeRemaining] = useState<number | null>(null) // Time left when paused
   const [intervalBells, setIntervalBells] = useState(0) // 0 = off
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
@@ -123,33 +125,39 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
     }
   }, [getAudioContext])
 
-  // Timer logic
+  // Timer logic - uses timestamps so it works correctly when app is backgrounded
   useEffect(() => {
-    if (timerState === 'running') {
-      intervalRef.current = setInterval(() => {
-        setTimeRemaining((prev) => {
-          const newTime = prev - 1
+    if (timerState === 'running' && startTime !== null) {
+      const updateTimer = () => {
+        const now = Date.now()
+        const elapsed = Math.floor((now - startTime) / 1000)
+        const duration = pausedTimeRemaining !== null ? pausedTimeRemaining : selectedDuration
+        const newTimeRemaining = Math.max(0, duration - elapsed)
 
-          // Check for interval bells
-          if (intervalBells > 0) {
-            const elapsed = selectedDuration - newTime
-            const bellInterval = intervalBells * 60
-            if (elapsed > 0 && elapsed % bellInterval === 0 && elapsed !== lastBellTimeRef.current) {
-              lastBellTimeRef.current = elapsed
-              playBell()
-            }
-          }
+        setTimeRemaining(newTimeRemaining)
 
-          if (newTime <= 0) {
-            clearInterval(intervalRef.current!)
-            setTimerState('completed')
-            releaseWakeLock()
+        // Check for interval bells
+        if (intervalBells > 0) {
+          const totalElapsed = selectedDuration - newTimeRemaining
+          const bellInterval = intervalBells * 60
+          if (totalElapsed > 0 && totalElapsed % bellInterval === 0 && totalElapsed !== lastBellTimeRef.current) {
+            lastBellTimeRef.current = totalElapsed
             playBell()
-            return 0
           }
-          return newTime
-        })
-      }, 1000)
+        }
+
+        if (newTimeRemaining <= 0) {
+          clearInterval(intervalRef.current!)
+          setTimerState('completed')
+          releaseWakeLock()
+          playBell()
+        }
+      }
+
+      // Update immediately when resuming from background
+      updateTimer()
+
+      intervalRef.current = setInterval(updateTimer, 1000)
     }
 
     return () => {
@@ -157,7 +165,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
         clearInterval(intervalRef.current)
       }
     }
-  }, [timerState, intervalBells, selectedDuration, playBell, releaseWakeLock])
+  }, [timerState, startTime, pausedTimeRemaining, intervalBells, selectedDuration, playBell, releaseWakeLock])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -191,21 +199,30 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
     } else {
       // Prep complete, start actual meditation
       setPrepCountdown(null)
+      setStartTime(Date.now()) // Record when timer actually started
+      setPausedTimeRemaining(null) // Clear any paused state
       setTimerState('running')
       playBell()
     }
   }, [prepCountdown, playBell])
 
   const handlePause = () => {
+    // Store current time remaining so we can resume from this point
+    setPausedTimeRemaining(timeRemaining)
+    setStartTime(null) // Clear start time while paused
     setTimerState('paused')
   }
 
   const handleResume = () => {
+    // Start fresh timer from current paused time
+    setStartTime(Date.now())
     setTimerState('running')
   }
 
   const handleEnd = () => {
     setTimerState('completed')
+    setStartTime(null)
+    setPausedTimeRemaining(null)
     releaseWakeLock()
     playBell()
   }
@@ -230,6 +247,8 @@ export default function TimerClient({ defaultDuration, defaultPracticeType }: Ti
   const handleDiscard = () => {
     setTimerState('setup')
     setTimeRemaining(selectedDuration)
+    setStartTime(null)
+    setPausedTimeRemaining(null)
     setNotes('')
     releaseWakeLock()
   }
