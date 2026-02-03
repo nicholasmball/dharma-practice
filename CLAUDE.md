@@ -256,7 +256,7 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 
 **Play Store status:**
 - Closed testing release published
-- Need 12 testers opted in (share opt-in link from Play Console → Testing → Closed testing)
+- **TODO: Recruit 12 testers** — post on r/betatesting, r/androidapps, r/Buddhism, r/meditation. Enable "Anyone with the link" in Play Console → Testing → Closed testing → Testers, then share the opt-in URL.
 - 14-day testing period required after 12 testers opt in
 - Then can apply for production access
 
