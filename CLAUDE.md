@@ -263,8 +263,8 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 **Generated files (keep backups!):**
 - `Buddha-Balla.aab` - Upload to Play Store
 - `Buddha-Balla.apk` - For direct testing
-- `signing.keystore` - **CRITICAL: Required for all future app updates** — stored in `G:\My Drive\_MY GOOGLE APPS IMPORTANT`
-- `signing-key-info.txt` - Keystore password — stored in `G:\My Drive\_MY GOOGLE APPS IMPORTANT`
+- `signing.keystore` - **CRITICAL: Required for all future app updates** — stored securely outside the repo (Google Drive)
+- `signing-key-info.txt` - Keystore password — stored securely outside the repo (Google Drive)
 
 **Play Store requirements completed:**
 - Privacy policy at `/privacy`
@@ -397,8 +397,8 @@ Check Supabase Dashboard → Authentication → URL Configuration. Ensure your d
 ## Backups
 
 **Critical files (losing these = cannot update Android app):**
-- `signing.keystore` — stored in `G:\My Drive\_MY GOOGLE APPS IMPORTANT`
-- `signing-key-info.txt` — stored in `G:\My Drive\_MY GOOGLE APPS IMPORTANT`
+- `signing.keystore` — stored securely outside the repo (Google Drive)
+- `signing-key-info.txt` — stored securely outside the repo (Google Drive)
 
 **Important but recoverable:**
 - `.env.local` — can recreate from Supabase/Anthropic dashboards, but annoying
