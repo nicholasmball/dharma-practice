@@ -28,7 +28,7 @@ A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
 - Explain every step clearly in plain English
 - Provide exact commands to run and specify where to run them
 - He's on Windows
-- He prefers to test locally before committing/pushing
+- **IMPORTANT: Never push changes without Nicholas confirming they work locally first.** Always ask him to test with `npm run dev` before committing/pushing.
 - He understands concepts well when explained, but don't assume prior knowledge of modern dev tooling
 
 ## Tech Stack
