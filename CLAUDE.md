@@ -2,7 +2,7 @@
 
 A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
 
-**Live at:** https://buddha-balla.com
+**Live at:** https://buddha-balla.com (landing page and app are on the same domain — app pages are behind auth)
 
 ## Table of Contents
 - [About the Developer](#about-the-developer)
@@ -16,6 +16,7 @@ A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
 - [Deployment](#deployment)
 - [Database Changes](#database-changes)
 - [Troubleshooting](#troubleshooting)
+- [Backups](#backups)
 - [Costs](#costs)
 
 ## About the Developer
@@ -84,6 +85,14 @@ src/
 │   │   └── server.ts        # Server Supabase client
 │   └── types.ts             # TypeScript types
 └── middleware.ts            # Auth middleware (route protection)
+
+public/
+├── icons/                   # PWA icons (192x192, 512x512)
+├── screenshots/             # App screenshots for Play Store & PWA
+├── .well-known/
+│   └── assetlinks.json      # Digital Asset Links (Android app verification)
+├── manifest.json            # PWA manifest
+└── feature-graphic.html     # Play Store feature graphic generator
 ```
 
 ## Database Schema
@@ -241,13 +250,21 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 
 ### Android App (Google Play Store)
 - PWA wrapped using PWABuilder (https://pwabuilder.com)
+- **Package ID:** `com.buddha_balla.twa`
+- **Play Console:** https://play.google.com/console/ (search for Buddha Balla)
 - **Digital Asset Links** at `/.well-known/assetlinks.json` - links website to Android app
+
+**Play Store status:**
+- Closed testing release published
+- Need 12 testers opted in (share opt-in link from Play Console → Testing → Closed testing)
+- 14-day testing period required after 12 testers opt in
+- Then can apply for production access
 
 **Generated files (keep backups!):**
 - `Buddha-Balla.aab` - Upload to Play Store
 - `Buddha-Balla.apk` - For direct testing
-- `signing.keystore` - **CRITICAL: Required for all future app updates**
-- `signing-key-info.txt` - Keystore password
+- `signing.keystore` - **CRITICAL: Required for all future app updates** — stored in `G:\My Drive\_MY GOOGLE APPS IMPORTANT`
+- `signing-key-info.txt` - Keystore password — stored in `G:\My Drive\_MY GOOGLE APPS IMPORTANT`
 
 **Play Store requirements completed:**
 - Privacy policy at `/privacy`
@@ -272,7 +289,8 @@ CLAUDE_MODEL=claude-opus-4-20250514  # Optional, defaults to claude-sonnet-4-202
 ```
 
 **Available Claude models:**
-- `claude-opus-4-20250514` - Most capable, higher cost
+- `claude-opus-4-5-20251101` - Most capable, highest cost
+- `claude-opus-4-20250514` - Very capable, higher cost
 - `claude-sonnet-4-20250514` - Balanced (default)
 - `claude-haiku-3-5-20241022` - Fastest, lowest cost
 
@@ -312,6 +330,7 @@ git push
 ### Services Configuration
 
 **Vercel:**
+- **Dashboard:** https://vercel.com/nick-balls-projects-f566c089/dharma-practice
 - Environment variables set in dashboard
 - Custom domain: buddha-balla.com
 
@@ -374,6 +393,20 @@ ALTER TABLE table_name DROP CONSTRAINT constraint_name;
 
 ### Auth redirect not working
 Check Supabase Dashboard → Authentication → URL Configuration. Ensure your domain is in the allowed redirect URLs.
+
+## Backups
+
+**Critical files (losing these = cannot update Android app):**
+- `signing.keystore` — stored in `G:\My Drive\_MY GOOGLE APPS IMPORTANT`
+- `signing-key-info.txt` — stored in `G:\My Drive\_MY GOOGLE APPS IMPORTANT`
+
+**Important but recoverable:**
+- `.env.local` — can recreate from Supabase/Anthropic dashboards, but annoying
+- Supabase data — can export via Settings > Data Export, but no automated backups on free tier
+
+**Backed up automatically:**
+- Source code — Git + GitHub
+- Vercel config — tied to GitHub repo
 
 ## Costs
 
