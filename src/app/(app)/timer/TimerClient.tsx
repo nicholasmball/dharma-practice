@@ -90,6 +90,17 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
     }
   }, [])
 
+  // Re-acquire wake lock when page becomes visible again (Android releases it on tab switch)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && (timerState === 'running' || prepCountdown !== null)) {
+        requestWakeLock()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [timerState, prepCountdown, requestWakeLock])
+
   // Play singing bowl sound
   const playBell = useCallback(() => {
     try {
