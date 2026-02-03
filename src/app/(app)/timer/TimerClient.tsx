@@ -255,7 +255,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
     setSaving(true)
     const actualDuration = selectedDuration - timeRemaining
     const result = await saveSession({
-      duration_seconds: timerState === 'completed' ? selectedDuration : actualDuration,
+      duration_seconds: actualDuration,
       practice_type: practiceType,
       notes: notes || undefined,
     })
