@@ -61,6 +61,41 @@ export const practiceTypeLabels: Record<BuiltInPracticeType, string> = {
   other: 'Other'
 }
 
+// Badge definitions for milestone achievements
+export interface Badge {
+  id: string
+  name: string
+  icon: string
+  description: string
+  type: 'streak' | 'hours'
+  threshold: number
+}
+
+export const BADGES: Badge[] = [
+  { id: 'first-sit', name: 'First Sit', icon: '☘', description: '1 completed session', type: 'streak', threshold: 1 },
+  { id: 'taking-root', name: 'Taking Root', icon: '🌳', description: '7-day streak', type: 'streak', threshold: 7 },
+  { id: 'moon-of-practice', name: 'Moon of Practice', icon: '🌕', description: '30-day streak', type: 'streak', threshold: 30 },
+  { id: 'mountain-seat', name: 'Mountain Seat', icon: '⛰', description: '100-day streak', type: 'streak', threshold: 100 },
+  { id: 'diamond-mind', name: 'Diamond Mind', icon: '💫', description: '365-day streak', type: 'streak', threshold: 365 },
+  { id: '10-hours', name: '10 Hours', icon: '☀', description: '10 hours practice', type: 'hours', threshold: 10 },
+  { id: '100-hours', name: '100 Hours', icon: '🔥', description: '100 hours practice', type: 'hours', threshold: 100 },
+  { id: '1000-hours', name: '1,000 Hours', icon: '🪶', description: '1,000 hours practice', type: 'hours', threshold: 1000 },
+]
+
+export function getEarnedBadgeIds(totalSessions: number, longestStreak: number, totalHours: number): Set<string> {
+  const earned = new Set<string>()
+  for (const badge of BADGES) {
+    if (badge.id === 'first-sit') {
+      if (totalSessions >= badge.threshold) earned.add(badge.id)
+    } else if (badge.type === 'streak') {
+      if (longestStreak >= badge.threshold) earned.add(badge.id)
+    } else if (badge.type === 'hours') {
+      if (totalHours >= badge.threshold) earned.add(badge.id)
+    }
+  }
+  return earned
+}
+
 // Helper to get label for any practice type (built-in or custom)
 export function getPracticeTypeLabel(type: string, customTypes?: CustomPracticeType[]): string {
   // Check if it's a built-in type

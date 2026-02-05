@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { MeditationSession, practiceTypeLabels, PracticeType } from '@/lib/types'
+import { MeditationSession, practiceTypeLabels, PracticeType, BADGES, getEarnedBadgeIds } from '@/lib/types'
 import StatsCharts from './StatsCharts'
 
 export default async function StatsPage() {
@@ -95,6 +95,10 @@ export default async function StatsPage() {
 
   const timeSinceLastSit = getTimeSinceLastSit()
 
+  // Compute earned badges from practice data
+  const totalHoursPrecise = totalSeconds / 3600
+  const earnedBadgeIds = getEarnedBadgeIds(totalSessions, longestStreak, totalHoursPrecise)
+
   return (
     <div>
       <h1 style={{ fontSize: '1.875rem', fontWeight: 300, marginBottom: '32px' }}>
@@ -146,6 +150,35 @@ export default async function StatsPage() {
             <StatCard label="Longest Streak" value={`${longestStreak}`} unit="days" />
             <StatCard label="Total Sessions" value={`${totalSessions}`} unit="sits" />
             <StatCard label="Avg Session" value={`${avgSessionMinutes}`} unit="min" />
+          </div>
+
+          {/* Milestones */}
+          <div>
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '12px' }}>
+              Milestones
+            </h2>
+            <div className="grid grid-cols-4 gap-3">
+              {BADGES.map(badge => {
+                const earned = earnedBadgeIds.has(badge.id)
+                return (
+                  <div
+                    key={badge.id}
+                    style={{
+                      padding: '16px 8px',
+                      backgroundColor: earned ? 'color-mix(in srgb, var(--accent) 8%, var(--surface))' : 'var(--surface)',
+                      borderRadius: '16px',
+                      border: earned ? '2px solid var(--accent)' : '1px solid var(--border)',
+                      textAlign: 'center',
+                      opacity: earned ? 1 : 0.4,
+                    }}
+                  >
+                    <div style={{ fontSize: '28px', lineHeight: 1 }}>{badge.icon}</div>
+                    <p style={{ fontSize: '11px', fontWeight: 500, marginTop: '8px' }}>{badge.name}</p>
+                    <p style={{ fontSize: '10px', color: 'var(--muted)', marginTop: '2px' }}>{badge.description}</p>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* Charts Section */}
