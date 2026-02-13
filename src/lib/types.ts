@@ -48,6 +48,7 @@ export interface UserSettings {
   default_session_duration: number
   default_practice_type: PracticeType
   custom_practice_types?: CustomPracticeType[]
+  bell_sound?: string
   created_at: string
   updated_at: string
 }

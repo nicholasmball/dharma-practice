@@ -72,6 +72,7 @@ export async function updateSettings(data: {
   journal_reminder_time: string | null
   default_session_duration: number
   default_practice_type: string
+  bell_sound: string
 }) {
   const supabase = await createClient()
 

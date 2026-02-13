@@ -15,6 +15,85 @@ const DURATION_OPTIONS = [
   { value: 3600, label: '60 minutes' },
 ]
 
+const BELL_SOUNDS: Record<string, { name: string; description: string }> = {
+  singing_bowl: { name: 'Singing Bowl', description: 'Warm tone with gentle overtones' },
+  temple_bell: { name: 'Temple Bell', description: 'Bright and clear with shimmer' },
+  tingsha: { name: 'Tingsha', description: 'Bright Tibetan cymbals, quick ring' },
+  deep_gong: { name: 'Deep Gong', description: 'Low resonant tone, long decay' },
+}
+
+// Bell preview functions using Web Audio API
+function previewBellSound(key: string) {
+  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+  const now = ctx.currentTime
+
+  if (key === 'singing_bowl') {
+    const osc1 = ctx.createOscillator(); const g1 = ctx.createGain()
+    osc1.type = 'sine'; osc1.frequency.setValueAtTime(220, now)
+    g1.gain.setValueAtTime(0.3, now); g1.gain.exponentialRampToValueAtTime(0.01, now + 4)
+    osc1.connect(g1); g1.connect(ctx.destination)
+    const osc2 = ctx.createOscillator(); const g2 = ctx.createGain()
+    osc2.type = 'sine'; osc2.frequency.setValueAtTime(440, now)
+    g2.gain.setValueAtTime(0.15, now); g2.gain.exponentialRampToValueAtTime(0.01, now + 3)
+    osc2.connect(g2); g2.connect(ctx.destination)
+    const osc3 = ctx.createOscillator(); const g3 = ctx.createGain()
+    osc3.type = 'sine'; osc3.frequency.setValueAtTime(660, now)
+    g3.gain.setValueAtTime(0.08, now); g3.gain.exponentialRampToValueAtTime(0.01, now + 2)
+    osc3.connect(g3); g3.connect(ctx.destination)
+    osc1.start(now); osc2.start(now); osc3.start(now)
+    osc1.stop(now + 4); osc2.stop(now + 3); osc3.stop(now + 2)
+  } else if (key === 'temple_bell') {
+    const osc1 = ctx.createOscillator(); const g1 = ctx.createGain()
+    osc1.type = 'sine'; osc1.frequency.setValueAtTime(523, now)
+    g1.gain.setValueAtTime(0.25, now); g1.gain.exponentialRampToValueAtTime(0.01, now + 3)
+    osc1.connect(g1); g1.connect(ctx.destination)
+    const osc2 = ctx.createOscillator(); const g2 = ctx.createGain()
+    osc2.type = 'sine'; osc2.frequency.setValueAtTime(1047, now)
+    g2.gain.setValueAtTime(0.12, now); g2.gain.exponentialRampToValueAtTime(0.01, now + 2)
+    osc2.connect(g2); g2.connect(ctx.destination)
+    const osc3 = ctx.createOscillator(); const g3 = ctx.createGain()
+    osc3.type = 'sine'; osc3.frequency.setValueAtTime(1568, now)
+    g3.gain.setValueAtTime(0.06, now); g3.gain.exponentialRampToValueAtTime(0.01, now + 1.5)
+    osc3.connect(g3); g3.connect(ctx.destination)
+    const osc4 = ctx.createOscillator(); const g4 = ctx.createGain()
+    osc4.type = 'sine'; osc4.frequency.setValueAtTime(2093, now)
+    g4.gain.setValueAtTime(0.04, now); g4.gain.exponentialRampToValueAtTime(0.01, now + 1)
+    osc4.connect(g4); g4.connect(ctx.destination)
+    osc1.start(now); osc2.start(now); osc3.start(now); osc4.start(now)
+    osc1.stop(now + 3); osc2.stop(now + 2); osc3.stop(now + 1.5); osc4.stop(now + 1)
+  } else if (key === 'tingsha') {
+    const osc1 = ctx.createOscillator(); const g1 = ctx.createGain()
+    osc1.type = 'sine'; osc1.frequency.setValueAtTime(1200, now)
+    g1.gain.setValueAtTime(0.2, now); g1.gain.exponentialRampToValueAtTime(0.01, now + 2)
+    osc1.connect(g1); g1.connect(ctx.destination)
+    const osc2 = ctx.createOscillator(); const g2 = ctx.createGain()
+    osc2.type = 'sine'; osc2.frequency.setValueAtTime(2400, now)
+    g2.gain.setValueAtTime(0.1, now); g2.gain.exponentialRampToValueAtTime(0.01, now + 1.5)
+    osc2.connect(g2); g2.connect(ctx.destination)
+    const osc3 = ctx.createOscillator(); const g3 = ctx.createGain()
+    osc3.type = 'sine'; osc3.frequency.setValueAtTime(1210, now)
+    g3.gain.setValueAtTime(0.08, now); g3.gain.exponentialRampToValueAtTime(0.01, now + 1.8)
+    osc3.connect(g3); g3.connect(ctx.destination)
+    osc1.start(now); osc2.start(now); osc3.start(now)
+    osc1.stop(now + 2); osc2.stop(now + 1.5); osc3.stop(now + 1.8)
+  } else if (key === 'deep_gong') {
+    const osc1 = ctx.createOscillator(); const g1 = ctx.createGain()
+    osc1.type = 'sine'; osc1.frequency.setValueAtTime(80, now)
+    g1.gain.setValueAtTime(0.35, now); g1.gain.exponentialRampToValueAtTime(0.01, now + 6)
+    osc1.connect(g1); g1.connect(ctx.destination)
+    const osc2 = ctx.createOscillator(); const g2 = ctx.createGain()
+    osc2.type = 'sine'; osc2.frequency.setValueAtTime(160, now)
+    g2.gain.setValueAtTime(0.2, now); g2.gain.exponentialRampToValueAtTime(0.01, now + 5)
+    osc2.connect(g2); g2.connect(ctx.destination)
+    const osc3 = ctx.createOscillator(); const g3 = ctx.createGain()
+    osc3.type = 'sine'; osc3.frequency.setValueAtTime(240, now)
+    g3.gain.setValueAtTime(0.1, now); g3.gain.exponentialRampToValueAtTime(0.01, now + 4)
+    osc3.connect(g3); g3.connect(ctx.destination)
+    osc1.start(now); osc2.start(now); osc3.start(now)
+    osc1.stop(now + 6); osc2.stop(now + 5); osc3.stop(now + 4)
+  }
+}
+
 interface SettingsFormProps {
   initialSettings: {
     meditation_reminder_enabled: boolean
@@ -24,6 +103,7 @@ interface SettingsFormProps {
     default_session_duration: number
     default_practice_type: string
     custom_practice_types?: CustomPracticeType[]
+    bell_sound?: string
   } | null
   userEmail: string
 }
@@ -46,6 +126,7 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
   const [journalReminderTime, setJournalReminderTime] = useState(initialSettings?.journal_reminder_time || '21:00')
   const [defaultDuration, setDefaultDuration] = useState(initialSettings?.default_session_duration || 1200)
   const [defaultPracticeType, setDefaultPracticeType] = useState(initialSettings?.default_practice_type || 'shamatha')
+  const [bellSound, setBellSound] = useState(initialSettings?.bell_sound || 'singing_bowl')
 
   // Custom practice types state
   const [customTypes, setCustomTypes] = useState<CustomPracticeType[]>(initialSettings?.custom_practice_types || [])
@@ -83,6 +164,7 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
       journal_reminder_time: journalReminderEnabled ? journalReminderTime : null,
       default_session_duration: defaultDuration,
       default_practice_type: defaultPracticeType,
+      bell_sound: bellSound,
     })
 
     if (result.error) {
@@ -371,6 +453,73 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
             ))}
             <option value="other">{practiceTypeLabels['other']}</option>
           </select>
+        </div>
+      </section>
+
+      {/* Bell Sound Section */}
+      <section style={{
+        backgroundColor: 'var(--surface)',
+        borderRadius: '16px',
+        border: '1px solid var(--border)',
+        padding: '24px',
+      }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '8px' }}>Bell Sound</h2>
+        <p style={{ color: 'var(--muted)', fontSize: '0.875rem', marginBottom: '20px' }}>
+          Choose the bell sound for your meditation timer.
+        </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {Object.entries(BELL_SOUNDS).map(([key, sound]) => (
+            <div
+              key={key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '14px 16px',
+                borderRadius: '12px',
+                border: bellSound === key ? '2px solid var(--accent)' : '1px solid var(--border)',
+                backgroundColor: bellSound === key ? 'rgba(201, 168, 76, 0.08)' : 'var(--background)',
+                cursor: 'pointer',
+              }}
+              onClick={() => setBellSound(key)}
+            >
+              <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', flex: 1 }}>
+                <input
+                  type="radio"
+                  name="bellSound"
+                  value={key}
+                  checked={bellSound === key}
+                  onChange={() => setBellSound(key)}
+                  style={{ accentColor: 'var(--accent)', width: '18px', height: '18px' }}
+                />
+                <div>
+                  <span style={{ display: 'block', fontWeight: 500 }}>{sound.name}</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--muted)', marginTop: '2px' }}>
+                    {sound.description}
+                  </span>
+                </div>
+              </label>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  previewBellSound(key)
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  backgroundColor: 'transparent',
+                  color: 'var(--muted)',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  flexShrink: 0,
+                }}
+              >
+                Preview
+              </button>
+            </div>
+          ))}
         </div>
       </section>
 

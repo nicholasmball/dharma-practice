@@ -21,12 +21,194 @@ const PRACTICE_DESCRIPTIONS: Record<BuiltInPracticeType, string> = {
   other: 'Any other meditation practice',
 }
 
+// Bell sound definitions - each has a play function using Web Audio API
+const BELL_SOUNDS: Record<string, {
+  name: string
+  description: string
+  play: (ctx: AudioContext) => void
+}> = {
+  singing_bowl: {
+    name: 'Singing Bowl',
+    description: 'Warm tone with gentle overtones',
+    play: (ctx) => {
+      const now = ctx.currentTime
+      const osc1 = ctx.createOscillator()
+      const gain1 = ctx.createGain()
+      osc1.type = 'sine'
+      osc1.frequency.setValueAtTime(220, now)
+      gain1.gain.setValueAtTime(0.3, now)
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 4)
+      osc1.connect(gain1)
+      gain1.connect(ctx.destination)
+
+      const osc2 = ctx.createOscillator()
+      const gain2 = ctx.createGain()
+      osc2.type = 'sine'
+      osc2.frequency.setValueAtTime(440, now)
+      gain2.gain.setValueAtTime(0.15, now)
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 3)
+      osc2.connect(gain2)
+      gain2.connect(ctx.destination)
+
+      const osc3 = ctx.createOscillator()
+      const gain3 = ctx.createGain()
+      osc3.type = 'sine'
+      osc3.frequency.setValueAtTime(660, now)
+      gain3.gain.setValueAtTime(0.08, now)
+      gain3.gain.exponentialRampToValueAtTime(0.01, now + 2)
+      osc3.connect(gain3)
+      gain3.connect(ctx.destination)
+
+      osc1.start(now)
+      osc2.start(now)
+      osc3.start(now)
+      osc1.stop(now + 4)
+      osc2.stop(now + 3)
+      osc3.stop(now + 2)
+    },
+  },
+  temple_bell: {
+    name: 'Temple Bell',
+    description: 'Bright and clear with shimmer',
+    play: (ctx) => {
+      const now = ctx.currentTime
+      const osc1 = ctx.createOscillator()
+      const gain1 = ctx.createGain()
+      osc1.type = 'sine'
+      osc1.frequency.setValueAtTime(523, now)
+      gain1.gain.setValueAtTime(0.25, now)
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 3)
+      osc1.connect(gain1)
+      gain1.connect(ctx.destination)
+
+      const osc2 = ctx.createOscillator()
+      const gain2 = ctx.createGain()
+      osc2.type = 'sine'
+      osc2.frequency.setValueAtTime(1047, now)
+      gain2.gain.setValueAtTime(0.12, now)
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 2)
+      osc2.connect(gain2)
+      gain2.connect(ctx.destination)
+
+      const osc3 = ctx.createOscillator()
+      const gain3 = ctx.createGain()
+      osc3.type = 'sine'
+      osc3.frequency.setValueAtTime(1568, now)
+      gain3.gain.setValueAtTime(0.06, now)
+      gain3.gain.exponentialRampToValueAtTime(0.01, now + 1.5)
+      osc3.connect(gain3)
+      gain3.connect(ctx.destination)
+
+      // Shimmer overtone with slight detune
+      const osc4 = ctx.createOscillator()
+      const gain4 = ctx.createGain()
+      osc4.type = 'sine'
+      osc4.frequency.setValueAtTime(2093, now)
+      gain4.gain.setValueAtTime(0.04, now)
+      gain4.gain.exponentialRampToValueAtTime(0.01, now + 1)
+      osc4.connect(gain4)
+      gain4.connect(ctx.destination)
+
+      osc1.start(now)
+      osc2.start(now)
+      osc3.start(now)
+      osc4.start(now)
+      osc1.stop(now + 3)
+      osc2.stop(now + 2)
+      osc3.stop(now + 1.5)
+      osc4.stop(now + 1)
+    },
+  },
+  tingsha: {
+    name: 'Tingsha',
+    description: 'Bright Tibetan cymbals, quick ring',
+    play: (ctx) => {
+      const now = ctx.currentTime
+      const osc1 = ctx.createOscillator()
+      const gain1 = ctx.createGain()
+      osc1.type = 'sine'
+      osc1.frequency.setValueAtTime(1200, now)
+      gain1.gain.setValueAtTime(0.2, now)
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 2)
+      osc1.connect(gain1)
+      gain1.connect(ctx.destination)
+
+      const osc2 = ctx.createOscillator()
+      const gain2 = ctx.createGain()
+      osc2.type = 'sine'
+      osc2.frequency.setValueAtTime(2400, now)
+      gain2.gain.setValueAtTime(0.1, now)
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 1.5)
+      osc2.connect(gain2)
+      gain2.connect(ctx.destination)
+
+      // Slightly detuned for metallic character
+      const osc3 = ctx.createOscillator()
+      const gain3 = ctx.createGain()
+      osc3.type = 'sine'
+      osc3.frequency.setValueAtTime(1210, now)
+      gain3.gain.setValueAtTime(0.08, now)
+      gain3.gain.exponentialRampToValueAtTime(0.01, now + 1.8)
+      osc3.connect(gain3)
+      gain3.connect(ctx.destination)
+
+      osc1.start(now)
+      osc2.start(now)
+      osc3.start(now)
+      osc1.stop(now + 2)
+      osc2.stop(now + 1.5)
+      osc3.stop(now + 1.8)
+    },
+  },
+  deep_gong: {
+    name: 'Deep Gong',
+    description: 'Low resonant tone, long decay',
+    play: (ctx) => {
+      const now = ctx.currentTime
+      const osc1 = ctx.createOscillator()
+      const gain1 = ctx.createGain()
+      osc1.type = 'sine'
+      osc1.frequency.setValueAtTime(80, now)
+      gain1.gain.setValueAtTime(0.35, now)
+      gain1.gain.exponentialRampToValueAtTime(0.01, now + 6)
+      osc1.connect(gain1)
+      gain1.connect(ctx.destination)
+
+      const osc2 = ctx.createOscillator()
+      const gain2 = ctx.createGain()
+      osc2.type = 'sine'
+      osc2.frequency.setValueAtTime(160, now)
+      gain2.gain.setValueAtTime(0.2, now)
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 5)
+      osc2.connect(gain2)
+      gain2.connect(ctx.destination)
+
+      const osc3 = ctx.createOscillator()
+      const gain3 = ctx.createGain()
+      osc3.type = 'sine'
+      osc3.frequency.setValueAtTime(240, now)
+      gain3.gain.setValueAtTime(0.1, now)
+      gain3.gain.exponentialRampToValueAtTime(0.01, now + 4)
+      osc3.connect(gain3)
+      gain3.connect(ctx.destination)
+
+      osc1.start(now)
+      osc2.start(now)
+      osc3.start(now)
+      osc1.stop(now + 6)
+      osc2.stop(now + 5)
+      osc3.stop(now + 4)
+    },
+  },
+}
+
 type TimerState = 'setup' | 'running' | 'paused' | 'completed'
 
 interface TimerClientProps {
   defaultDuration: number
   defaultPracticeType: string
   customPracticeTypes: CustomPracticeType[]
+  bellSound: string
 }
 
 const TIMER_STORAGE_KEY = 'dharma-timer-state'
@@ -62,7 +244,7 @@ function clearTimerStorage() {
   } catch {}
 }
 
-export default function TimerClient({ defaultDuration, defaultPracticeType, customPracticeTypes }: TimerClientProps) {
+export default function TimerClient({ defaultDuration, defaultPracticeType, customPracticeTypes, bellSound }: TimerClientProps) {
   const router = useRouter()
   const [timerState, setTimerState] = useState<TimerState>('setup')
   const [selectedDuration, setSelectedDuration] = useState(defaultDuration)
@@ -192,53 +374,16 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [timerState, startTime, pausedTimeRemaining, selectedDuration, prepCountdown, requestWakeLock, releaseWakeLock])
 
-  // Play singing bowl sound
+  // Play bell sound using selected bell type
   const playBell = useCallback(() => {
     try {
       const ctx = getAudioContext()
-      const now = ctx.currentTime
-
-      // Create oscillator for the fundamental tone
-      const osc1 = ctx.createOscillator()
-      const gain1 = ctx.createGain()
-      osc1.type = 'sine'
-      osc1.frequency.setValueAtTime(220, now) // A3
-      gain1.gain.setValueAtTime(0.3, now)
-      gain1.gain.exponentialRampToValueAtTime(0.01, now + 4)
-      osc1.connect(gain1)
-      gain1.connect(ctx.destination)
-
-      // Create oscillator for overtone
-      const osc2 = ctx.createOscillator()
-      const gain2 = ctx.createGain()
-      osc2.type = 'sine'
-      osc2.frequency.setValueAtTime(440, now) // A4
-      gain2.gain.setValueAtTime(0.15, now)
-      gain2.gain.exponentialRampToValueAtTime(0.01, now + 3)
-      osc2.connect(gain2)
-      gain2.connect(ctx.destination)
-
-      // Create oscillator for higher overtone
-      const osc3 = ctx.createOscillator()
-      const gain3 = ctx.createGain()
-      osc3.type = 'sine'
-      osc3.frequency.setValueAtTime(660, now) // E5
-      gain3.gain.setValueAtTime(0.08, now)
-      gain3.gain.exponentialRampToValueAtTime(0.01, now + 2)
-      osc3.connect(gain3)
-      gain3.connect(ctx.destination)
-
-      osc1.start(now)
-      osc2.start(now)
-      osc3.start(now)
-
-      osc1.stop(now + 4)
-      osc2.stop(now + 3)
-      osc3.stop(now + 2)
+      const sound = BELL_SOUNDS[bellSound] || BELL_SOUNDS.singing_bowl
+      sound.play(ctx)
     } catch (e) {
       console.log('Audio not available')
     }
-  }, [getAudioContext])
+  }, [getAudioContext, bellSound])
 
   // Timer logic - uses timestamps so it works correctly when app is backgrounded
   useEffect(() => {
