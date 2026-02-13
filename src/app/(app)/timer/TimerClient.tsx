@@ -29,6 +29,39 @@ interface TimerClientProps {
   customPracticeTypes: CustomPracticeType[]
 }
 
+const TIMER_STORAGE_KEY = 'dharma-timer-state'
+
+interface SavedTimerState {
+  timerState: TimerState
+  startTime: number
+  selectedDuration: number
+  pausedTimeRemaining: number | null
+  practiceType: string
+  intervalBells: number
+}
+
+function saveTimerToStorage(state: SavedTimerState) {
+  try {
+    localStorage.setItem(TIMER_STORAGE_KEY, JSON.stringify(state))
+  } catch {}
+}
+
+function loadTimerFromStorage(): SavedTimerState | null {
+  try {
+    const raw = localStorage.getItem(TIMER_STORAGE_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function clearTimerStorage() {
+  try {
+    localStorage.removeItem(TIMER_STORAGE_KEY)
+  } catch {}
+}
+
 export default function TimerClient({ defaultDuration, defaultPracticeType, customPracticeTypes }: TimerClientProps) {
   const router = useRouter()
   const [timerState, setTimerState] = useState<TimerState>('setup')
@@ -57,6 +90,44 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
   const [saving, setSaving] = useState(false)
   const [practiceTypeExpanded, setPracticeTypeExpanded] = useState(false)
   const [prepCountdown, setPrepCountdown] = useState<number | null>(null)
+  // Restore timer state from localStorage on mount (survives page kills)
+  useEffect(() => {
+    const saved = loadTimerFromStorage()
+    if (!saved) return
+
+    const now = Date.now()
+    const elapsed = Math.floor((now - saved.startTime) / 1000)
+    const duration = saved.pausedTimeRemaining !== null ? saved.pausedTimeRemaining : saved.selectedDuration
+
+    if (saved.timerState === 'running') {
+      const remaining = Math.max(0, duration - elapsed)
+      if (remaining <= 0) {
+        // Timer expired while page was dead — go to completed
+        setSelectedDuration(saved.selectedDuration)
+        setPracticeType(saved.practiceType)
+        setIntervalBells(saved.intervalBells)
+        setTimeRemaining(0)
+        setTimerState('completed')
+        clearTimerStorage()
+      } else {
+        // Timer still has time — resume it
+        setSelectedDuration(saved.selectedDuration)
+        setPracticeType(saved.practiceType)
+        setIntervalBells(saved.intervalBells)
+        setStartTime(saved.startTime)
+        setPausedTimeRemaining(saved.pausedTimeRemaining)
+        setTimeRemaining(remaining)
+        setTimerState('running')
+      }
+    } else if (saved.timerState === 'paused') {
+      setSelectedDuration(saved.selectedDuration)
+      setPracticeType(saved.practiceType)
+      setIntervalBells(saved.intervalBells)
+      setPausedTimeRemaining(saved.pausedTimeRemaining)
+      setTimeRemaining(saved.pausedTimeRemaining ?? saved.selectedDuration)
+      setTimerState('paused')
+    }
+  }, [])
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
@@ -172,6 +243,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
   // Timer logic - uses timestamps so it works correctly when app is backgrounded
   useEffect(() => {
     if (timerState === 'running' && startTime !== null) {
+      requestWakeLock()
       const updateTimer = () => {
         const now = Date.now()
         const elapsed = Math.floor((now - startTime) / 1000)
@@ -194,6 +266,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
           clearInterval(intervalRef.current!)
           setTimerState('completed')
           releaseWakeLock()
+          clearTimerStorage()
           // Only play bell if timer just finished (within 3 seconds)
           // Prevents bell from playing when returning to app after
           // the timer expired while the tab was backgrounded
@@ -215,7 +288,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
         clearInterval(intervalRef.current)
       }
     }
-  }, [timerState, startTime, pausedTimeRemaining, intervalBells, selectedDuration, playBell, releaseWakeLock])
+  }, [timerState, startTime, pausedTimeRemaining, intervalBells, selectedDuration, playBell, releaseWakeLock, requestWakeLock])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -249,24 +322,48 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
     } else {
       // Prep complete, start actual meditation
       setPrepCountdown(null)
-      setStartTime(Date.now()) // Record when timer actually started
-      setPausedTimeRemaining(null) // Clear any paused state
+      const now = Date.now()
+      setStartTime(now)
+      setPausedTimeRemaining(null)
       setTimerState('running')
+      saveTimerToStorage({
+        timerState: 'running',
+        startTime: now,
+        selectedDuration,
+        pausedTimeRemaining: null,
+        practiceType,
+        intervalBells,
+      })
       playBell()
     }
-  }, [prepCountdown, playBell])
+  }, [prepCountdown, selectedDuration, practiceType, intervalBells, playBell])
 
   const handlePause = () => {
-    // Store current time remaining so we can resume from this point
     setPausedTimeRemaining(timeRemaining)
-    setStartTime(null) // Clear start time while paused
+    setStartTime(null)
     setTimerState('paused')
+    saveTimerToStorage({
+      timerState: 'paused',
+      startTime: 0,
+      selectedDuration,
+      pausedTimeRemaining: timeRemaining,
+      practiceType,
+      intervalBells,
+    })
   }
 
   const handleResume = () => {
-    // Start fresh timer from current paused time
-    setStartTime(Date.now())
+    const now = Date.now()
+    setStartTime(now)
     setTimerState('running')
+    saveTimerToStorage({
+      timerState: 'running',
+      startTime: now,
+      selectedDuration,
+      pausedTimeRemaining: timeRemaining,
+      practiceType,
+      intervalBells,
+    })
   }
 
   const handleEnd = () => {
@@ -274,11 +371,13 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
     setStartTime(null)
     setPausedTimeRemaining(null)
     releaseWakeLock()
+    clearTimerStorage()
     playBell()
   }
 
   const handleSave = async () => {
     setSaving(true)
+    clearTimerStorage()
     const actualDuration = selectedDuration - timeRemaining
     const result = await saveSession({
       duration_seconds: actualDuration,
@@ -295,6 +394,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
   }
 
   const handleDiscard = () => {
+    clearTimerStorage()
     setTimerState('setup')
     setTimeRemaining(selectedDuration)
     setStartTime(null)
