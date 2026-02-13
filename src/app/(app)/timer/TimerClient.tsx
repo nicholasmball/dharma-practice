@@ -90,16 +90,36 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
     }
   }, [])
 
-  // Re-acquire wake lock when page becomes visible again (Android releases it on tab switch)
+  // Handle page visibility changes (tab switch, app backgrounded)
+  // Re-acquires wake lock and handles timer expiry while backgrounded
   useEffect(() => {
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && (timerState === 'running' || prepCountdown !== null)) {
-        requestWakeLock()
+      if (document.visibilityState === 'visible') {
+        if (timerState === 'running' && startTime !== null) {
+          const now = Date.now()
+          const elapsed = Math.floor((now - startTime) / 1000)
+          const duration = pausedTimeRemaining !== null ? pausedTimeRemaining : selectedDuration
+          const remaining = Math.max(0, duration - elapsed)
+
+          if (remaining <= 0) {
+            // Timer expired while backgrounded — complete silently (no bell)
+            if (intervalRef.current) clearInterval(intervalRef.current)
+            setTimeRemaining(0)
+            setTimerState('completed')
+            setStartTime(null)
+            setPausedTimeRemaining(null)
+            releaseWakeLock()
+            return
+          }
+          requestWakeLock()
+        } else if (prepCountdown !== null) {
+          requestWakeLock()
+        }
       }
     }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
-  }, [timerState, prepCountdown, requestWakeLock])
+  }, [timerState, startTime, pausedTimeRemaining, selectedDuration, prepCountdown, requestWakeLock, releaseWakeLock])
 
   // Play singing bowl sound
   const playBell = useCallback(() => {
@@ -174,7 +194,13 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
           clearInterval(intervalRef.current!)
           setTimerState('completed')
           releaseWakeLock()
-          playBell()
+          // Only play bell if timer just finished (within 3 seconds)
+          // Prevents bell from playing when returning to app after
+          // the timer expired while the tab was backgrounded
+          const overtime = elapsed - duration
+          if (overtime <= 3) {
+            playBell()
+          }
         }
       }
 
