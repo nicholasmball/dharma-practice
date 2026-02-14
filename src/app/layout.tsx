@@ -6,13 +6,13 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Dharma Practice',
+  title: 'Buddha Balla',
   description: 'A contemplative space for meditation practice',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Dharma Practice',
+    title: 'Buddha Balla',
   },
 }
 

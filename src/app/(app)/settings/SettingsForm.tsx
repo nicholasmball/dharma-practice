@@ -145,7 +145,7 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
       const permission = await Notification.requestPermission()
       setNotificationPermission(permission)
       if (permission === 'granted') {
-        new Notification('Dharma Practice', {
+        new Notification('Buddha Balla', {
           body: 'Notifications are now enabled!',
           icon: '/favicon.ico',
         })

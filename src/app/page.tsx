@@ -9,7 +9,7 @@ export default function Home() {
         <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-2 border-[var(--accent)] opacity-60 mb-8" />
 
         <h1 className="text-4xl md:text-5xl font-light text-center mb-4 tracking-wide">
-          Dharma Practice
+          Buddha Balla
         </h1>
 
         <p className="text-[var(--muted)] text-center max-w-lg mb-8 text-lg leading-relaxed">

@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <section>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 500, marginBottom: '12px' }}>Overview</h2>
           <p style={{ lineHeight: 1.7 }}>
-            Dharma Practice is a meditation tracking app. We respect your privacy and are committed to protecting your personal data. This policy explains what information we collect and how we use it.
+            Buddha Balla is a meditation tracking app. We respect your privacy and are committed to protecting your personal data. This policy explains what information we collect and how we use it.
           </p>
         </section>
 
