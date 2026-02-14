@@ -45,7 +45,8 @@ export default function LoginPage() {
             name="email"
             type="email"
             required
-            className="w-full px-4 py-3 bg-[var(--surface)] text-[var(--foreground)] rounded-xl border border-[var(--border)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] focus:outline-none"
+            disabled={loading}
+            className="w-full px-4 py-3 bg-[var(--surface)] text-[var(--foreground)] rounded-xl border border-[var(--border)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] focus:outline-none disabled:opacity-50"
             placeholder="you@example.com"
           />
         </div>
@@ -64,7 +65,8 @@ export default function LoginPage() {
             name="password"
             type="password"
             required
-            className="w-full px-4 py-3 bg-[var(--surface)] text-[var(--foreground)] rounded-xl border border-[var(--border)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] focus:outline-none"
+            disabled={loading}
+            className="w-full px-4 py-3 bg-[var(--surface)] text-[var(--foreground)] rounded-xl border border-[var(--border)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] focus:outline-none disabled:opacity-50"
             placeholder="••••••••"
           />
         </div>
@@ -72,14 +74,17 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full px-8 py-3 bg-[var(--accent)] text-[var(--background)] font-medium rounded-xl hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-8 py-3 bg-[var(--accent)] text-[var(--background)] font-medium rounded-xl hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
+          {loading && (
+            <span className="inline-block w-4 h-4 border-2 border-[var(--background)]/30 border-t-[var(--background)] rounded-full animate-spin" />
+          )}
           {loading ? 'Signing in...' : 'Sign In'}
         </button>
       </form>
 
       <p className="mt-8 text-[var(--muted)] text-sm">
-        New to Dharma Practice?{' '}
+        New to Buddha Balla?{' '}
         <Link href="/signup" className="text-[var(--accent)] hover:underline">
           Create an account
         </Link>
