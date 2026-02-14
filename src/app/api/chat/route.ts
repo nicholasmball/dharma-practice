@@ -6,6 +6,54 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+// In-memory rate limiter (per user)
+// Tracks: { [userId]: { count: number, resetTime: number }[] }
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
+const RATE_LIMIT_MAX = 10 // max requests per window
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now()
+  const entry = rateLimitMap.get(userId)
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS })
+    return true
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX) {
+    return false
+  }
+
+  entry.count++
+  return true
+}
+
+// Clean up stale entries periodically (prevent memory leak)
+setInterval(() => {
+  const now = Date.now()
+  for (const [key, entry] of rateLimitMap) {
+    if (now > entry.resetTime) {
+      rateLimitMap.delete(key)
+    }
+  }
+}, 5 * 60 * 1000) // every 5 minutes
+
+// Validate messages array
+function validateMessages(messages: unknown): messages is Array<{ role: string; content: string }> {
+  if (!Array.isArray(messages)) return false
+  if (messages.length === 0 || messages.length > 50) return false
+
+  for (const msg of messages) {
+    if (typeof msg !== 'object' || msg === null) return false
+    if (typeof msg.role !== 'string' || typeof msg.content !== 'string') return false
+    if (msg.role !== 'user' && msg.role !== 'assistant') return false
+    if (msg.content.length === 0 || msg.content.length > 10000) return false
+  }
+
+  return true
+}
+
 const SYSTEM_PROMPT = `You are an experienced meditation teacher deeply grounded in the Tibetan Buddhist tradition, with particular expertise in Mahamudra (especially the Kagyu lineage teachings on the nature of mind) and Dzogchen (trekchö, togal, rigpa, and natural awareness).
 
 Your approach embodies:
@@ -46,7 +94,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { messages, includeContext } = await request.json()
+    // Rate limiting
+    if (!checkRateLimit(user.id)) {
+      return NextResponse.json(
+        { error: 'You\'re sending messages too quickly. Please wait a moment before trying again.' },
+        { status: 429 }
+      )
+    }
+
+    // Parse and validate request body
+    let body: { messages?: unknown; includeContext?: unknown }
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
+    }
+
+    const { messages, includeContext } = body
+
+    // Validate messages
+    if (!validateMessages(messages)) {
+      return NextResponse.json(
+        { error: 'Invalid message format. Please refresh and try again.' },
+        { status: 400 }
+      )
+    }
 
     // Build context from user's practice data if requested
     let contextMessage = ''
@@ -97,7 +169,6 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
     }
 
     const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514'
-    console.log('Using Claude model:', model)
 
     const response = await client.messages.create({
       model,
@@ -113,10 +184,10 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
     const text = textContent && textContent.type === 'text' ? textContent.text : ''
 
     return NextResponse.json({ message: text })
-  } catch (error: any) {
-    console.error('Chat error:', error)
+  } catch (error: unknown) {
+    console.error('Chat API error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json(
-      { error: error.message || 'Failed to get response' },
+      { error: 'The teacher is unavailable right now. Please try again in a moment.' },
       { status: 500 }
     )
   }

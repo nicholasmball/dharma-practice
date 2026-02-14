@@ -30,7 +30,8 @@ export async function createClient() {
 }
 
 // Admin client for operations requiring service role (like deleting users)
-export function createAdminClient() {
+// IMPORTANT: Only use via deleteUserAccount() below — never expose the raw admin client
+function createAdminClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -41,4 +42,20 @@ export function createAdminClient() {
       }
     }
   )
+}
+
+// Safe wrapper: deletes a user from auth, but only if the caller provides a matching authenticated user ID
+export async function deleteUserAccount(authenticatedUserId: string) {
+  if (!authenticatedUserId) {
+    return { error: 'No authenticated user ID provided' }
+  }
+
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.auth.admin.deleteUser(authenticatedUserId)
+
+  if (error) {
+    return { error: error.message }
+  }
+
+  return { success: true }
 }
