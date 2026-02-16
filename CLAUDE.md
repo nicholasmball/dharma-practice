@@ -1,4 +1,4 @@
-# Dharma Practice - Project Documentation
+# balladharma - Project Documentation
 
 A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
 

@@ -84,7 +84,7 @@ export default function LoginPage() {
       </form>
 
       <p className="mt-8 text-[var(--muted)] text-sm">
-        New to Buddha Balla?{' '}
+        New to balladharma?{' '}
         <Link href="/signup" className="text-[var(--accent)] hover:underline">
           Create an account
         </Link>

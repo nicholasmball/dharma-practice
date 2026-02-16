@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gamification Mockups - balladharma</title>
+<style>
+  :root {
+    --background: #1a1f2e;
+    --foreground: #e0e4eb;
+    --accent: #c9a84c;
+    --surface: #232938;
+    --border: #3a4358;
+    --muted: #8b92a5;
+    --error: #e05555;
+    --success: #55b085;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 24px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    text-align: center;
+    color: var(--accent);
+    margin-bottom: 8px;
+    font-size: 22px;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    margin-bottom: 32px;
+    font-size: 14px;
+  }
+
+  h2 {
+    color: var(--accent);
+    font-size: 16px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section {
+    margin-bottom: 40px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+
+  /* ============ 1. DAILY SIT RING ============ */
+  .ring-container {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .ring-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    flex-shrink: 0;
+  }
+
+  .ring-bg {
+    fill: none;
+    stroke: var(--border);
+    stroke-width: 6;
+  }
+
+  .ring-progress {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 6;
+    stroke-linecap: round;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    transition: stroke-dashoffset 0.5s ease;
+  }
+
+  .ring-check {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+  }
+
+  .ring-info h3 {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .ring-info p {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .ring-row {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .ring-example {
+    text-align: center;
+  }
+
+  .ring-example .label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  .ring-small {
+    position: relative;
+    width: 64px;
+    height: 64px;
+  }
+
+  .ring-small .ring-check {
+    font-size: 20px;
+  }
+
+  /* ============ 2. MILESTONE BADGES ============ */
+  .badges-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .badge {
+    text-align: center;
+    padding: 12px 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+
+  .badge.earned {
+    border-color: var(--accent);
+    background: rgba(201, 168, 76, 0.08);
+  }
+
+  .badge.locked {
+    opacity: 0.4;
+  }
+
+  .badge-icon {
+    font-size: 28px;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .badge-name {
+    font-size: 10px;
+    color: var(--foreground);
+    line-height: 1.3;
+  }
+
+  .badge-days {
+    font-size: 9px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .badge.locked .badge-icon {
+    filter: grayscale(1);
+  }
+
+  /* ============ 3. PRACTICE HEAT MAP ============ */
+  .heatmap {
+    display: flex;
+    gap: 3px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .heatmap-week {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .heatmap-day {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: var(--border);
+  }
+
+  .heatmap-day.l1 { background: rgba(201, 168, 76, 0.25); }
+  .heatmap-day.l2 { background: rgba(201, 168, 76, 0.5); }
+  .heatmap-day.l3 { background: rgba(201, 168, 76, 0.75); }
+  .heatmap-day.l4 { background: var(--accent); }
+
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 10px;
+    justify-content: flex-end;
+  }
+
+  .heatmap-legend span {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .heatmap-legend .heatmap-day {
+    width: 12px;
+    height: 12px;
+  }
+
+  .heatmap-labels {
+    display: flex;
+    gap: 3px;
+    margin-bottom: 6px;
+    padding-left: 0;
+  }
+
+  .heatmap-month {
+    font-size: 10px;
+    color: var(--muted);
+    min-width: 14px;
+    text-align: center;
+  }
+
+  /* ============ 4. WEEKLY COMMITMENT ============ */
+  .week-dots {
+    display: flex;
+    gap: 8px;
+    margin: 12px 0;
+    justify-content: center;
+  }
+
+  .week-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .week-dot.done {
+    border-color: var(--accent);
+    background: rgba(201, 168, 76, 0.15);
+    color: var(--accent);
+  }
+
+  .week-dot.today {
+    border-color: var(--foreground);
+    color: var(--foreground);
+  }
+
+  .week-progress-text {
+    text-align: center;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  .week-progress-text strong {
+    color: var(--accent);
+  }
+
+  /* ============ 5. GENTLE NUDGE ============ */
+  .nudge {
+    text-align: center;
+    padding: 24px 16px;
+    font-style: italic;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .nudge .cta {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 10px 24px;
+    background: var(--accent);
+    color: var(--background);
+    border-radius: 8px;
+    font-style: normal;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+  }
+
+  /* ============ 6. STREAK WITH PROTECTION ============ */
+  .streak-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .streak-number {
+    font-size: 36px;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .streak-label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .streak-shield {
+    text-align: center;
+  }
+
+  .shield-icon {
+    font-size: 24px;
+    display: block;
+  }
+
+  .shield-label {
+    font-size: 10px;
+    color: var(--success);
+    margin-top: 2px;
+  }
+
+  .divider {
+    width: 1px;
+    height: 48px;
+    background: var(--border);
+  }
+
+  .note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 8px;
+    padding: 8px 12px;
+    background: rgba(201, 168, 76, 0.05);
+    border-radius: 8px;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+
+<h1>Gamification Mockups</h1>
+<p class="subtitle">How each feature would look on your dashboard</p>
+
+<!-- 1. DAILY SIT RING -->
+<div class="section">
+  <h2>1. Daily Sit Ring</h2>
+
+  <div class="card">
+    <div class="ring-container">
+      <div class="ring-wrapper">
+        <svg viewBox="0 0 80 80">
+          <circle class="ring-bg" cx="40" cy="40" r="34" />
+        </svg>
+        <div class="ring-check" style="color: var(--muted); font-size: 14px;">0 min</div>
+      </div>
+      <div class="ring-info">
+        <h3>Today's Practice</h3>
+        <p>You haven't sat yet today.<br>Your cushion awaits.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ring-container">
+      <div class="ring-wrapper">
+        <svg viewBox="0 0 80 80">
+          <circle class="ring-bg" cx="40" cy="40" r="34" />
+          <circle class="ring-progress" cx="40" cy="40" r="34"
+            stroke-dasharray="213.6" stroke-dashoffset="106.8" />
+        </svg>
+        <div class="ring-check" style="color: var(--accent); font-size: 14px;">10m</div>
+      </div>
+      <div class="ring-info">
+        <h3>Today's Practice</h3>
+        <p>10 minutes of shamatha.<br>Half way to your daily goal.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ring-container">
+      <div class="ring-wrapper">
+        <svg viewBox="0 0 80 80">
+          <circle class="ring-bg" cx="40" cy="40" r="34" />
+          <circle class="ring-progress" cx="40" cy="40" r="34"
+            stroke-dasharray="213.6" stroke-dashoffset="0" />
+        </svg>
+        <div class="ring-check" style="color: var(--accent);">&#10003;</div>
+      </div>
+      <div class="ring-info">
+        <h3>Today's Practice</h3>
+        <p>20 minutes of shamatha.<br>Daily goal complete!</p>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">Shows on dashboard. Ring fills based on daily goal (set in Settings). Defaults to 20 min.</p>
+</div>
+
+<!-- 2. MILESTONE BADGES -->
+<div class="section">
+  <h2>2. Milestone Badges</h2>
+
+  <div class="card">
+    <div class="badges-grid">
+      <div class="badge earned">
+        <span class="badge-icon">&#9752;</span>
+        <div class="badge-name">First Sit</div>
+        <div class="badge-days">Day 1</div>
+      </div>
+      <div class="badge earned">
+        <span class="badge-icon">&#127795;</span>
+        <div class="badge-name">Taking Root</div>
+        <div class="badge-days">7 days</div>
+      </div>
+      <div class="badge earned">
+        <span class="badge-icon">&#127765;</span>
+        <div class="badge-name">Moon of Practice</div>
+        <div class="badge-days">30 days</div>
+      </div>
+      <div class="badge locked">
+        <span class="badge-icon">&#9968;</span>
+        <div class="badge-name">Mountain Seat</div>
+        <div class="badge-days">100 days</div>
+      </div>
+    </div>
+
+    <div style="height: 12px;"></div>
+
+    <div class="badges-grid">
+      <div class="badge locked">
+        <span class="badge-icon">&#128171;</span>
+        <div class="badge-name">Diamond Mind</div>
+        <div class="badge-days">365 days</div>
+      </div>
+      <div class="badge locked">
+        <span class="badge-icon">&#127774;</span>
+        <div class="badge-name">10 Hours</div>
+        <div class="badge-days">Total</div>
+      </div>
+      <div class="badge locked">
+        <span class="badge-icon">&#128293;</span>
+        <div class="badge-name">100 Hours</div>
+        <div class="badge-days">Total</div>
+      </div>
+      <div class="badge locked">
+        <span class="badge-icon">&#129702;</span>
+        <div class="badge-name">1000 Hours</div>
+        <div class="badge-days">Total</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">Shows on stats page. Mix of streak milestones (top row) and total hours milestones (bottom row). Locked badges are dimmed.</p>
+</div>
+
+<!-- 3. PRACTICE HEAT MAP -->
+<div class="section">
+  <h2>3. Practice Heat Map</h2>
+
+  <div class="card">
+    <div class="heatmap">
+      <div class="heatmap-week">
+        <div class="heatmap-day l1"></div><div class="heatmap-day"></div><div class="heatmap-day l2"></div>
+        <div class="heatmap-day l3"></div><div class="heatmap-day"></div><div class="heatmap-day l1"></div>
+        <div class="heatmap-day"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day l2"></div><div class="heatmap-day l1"></div><div class="heatmap-day"></div>
+        <div class="heatmap-day l4"></div><div class="heatmap-day l2"></div><div class="heatmap-day"></div>
+        <div class="heatmap-day l1"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day"></div><div class="heatmap-day l3"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l2"></div><div class="heatmap-day l4"></div><div class="heatmap-day l1"></div>
+        <div class="heatmap-day l3"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l3"></div>
+        <div class="heatmap-day l4"></div><div class="heatmap-day l2"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l3"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day l4"></div><div class="heatmap-day l3"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l4"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l3"></div>
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l2"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l4"></div><div class="heatmap-day l3"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l4"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l4"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day l3"></div><div class="heatmap-day l4"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day l4"></div>
+      </div>
+      <div class="heatmap-week">
+        <div class="heatmap-day l4"></div><div class="heatmap-day l4"></div><div class="heatmap-day l4"></div>
+        <div class="heatmap-day"></div><div class="heatmap-day"></div><div class="heatmap-day"></div>
+        <div class="heatmap-day"></div>
+      </div>
+    </div>
+    <div class="heatmap-legend">
+      <span>Less</span>
+      <div class="heatmap-day"></div>
+      <div class="heatmap-day l1"></div>
+      <div class="heatmap-day l2"></div>
+      <div class="heatmap-day l3"></div>
+      <div class="heatmap-day l4"></div>
+      <span>More</span>
+    </div>
+  </div>
+
+  <p class="note">Shows on stats page. Like GitHub's contribution graph. Each square is a day, darker = longer practice. Tells a visual story of building consistency over time.</p>
+</div>
+
+<!-- 4. WEEKLY COMMITMENT -->
+<div class="section">
+  <h2>4. Weekly Commitment</h2>
+
+  <div class="card">
+    <div class="week-dots">
+      <div class="week-dot done">M<br>&#10003;</div>
+      <div class="week-dot done">T<br>&#10003;</div>
+      <div class="week-dot done">W<br>&#10003;</div>
+      <div class="week-dot today">T</div>
+      <div class="week-dot">F</div>
+      <div class="week-dot">S</div>
+      <div class="week-dot">S</div>
+    </div>
+    <p class="week-progress-text"><strong>3 of 5</strong> days this week</p>
+  </div>
+
+  <p class="note">Shows on dashboard. User sets weekly goal in Settings (default: 5 days). Less pressure than requiring every single day.</p>
+</div>
+
+<!-- 5. STREAK WITH PROTECTION -->
+<div class="section">
+  <h2>5. Streak with Rest Day</h2>
+
+  <div class="card">
+    <div class="streak-card">
+      <div>
+        <div class="streak-number">23</div>
+        <div class="streak-label">day streak</div>
+      </div>
+      <div class="divider"></div>
+      <div>
+        <div class="streak-number" style="font-size: 28px;">47</div>
+        <div class="streak-label">longest streak</div>
+      </div>
+      <div class="divider"></div>
+      <div class="streak-shield">
+        <span class="shield-icon">&#128737;</span>
+        <div class="shield-label">1 rest day<br>available</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">Adds a "rest day" shield to existing streak display. Missing one day per week doesn't break the streak. Reduces anxiety around maintaining streaks.</p>
+</div>
+
+<!-- 6. GENTLE NUDGE -->
+<div class="section">
+  <h2>6. Gentle Dashboard Nudge</h2>
+
+  <div class="card">
+    <div class="nudge">
+      "The practice is not about perfection.<br>It is about returning, again and again."
+      <br>
+      <a class="cta" href="#">Begin Today's Sit</a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="nudge">
+      "Like water wearing away stone,<br>daily practice transforms the mind."
+      <br>
+      <a class="cta" href="#">Begin Today's Sit</a>
+    </div>
+  </div>
+
+  <p class="note">Shows on dashboard only when you haven't sat today. Rotating dharma quotes with a direct CTA to the timer. Disappears once you've completed a session.</p>
+</div>
+
+</body>
+</html>

@@ -109,7 +109,7 @@ export default async function DashboardPage() {
             <span style={{ fontSize: '2rem', color: 'var(--accent)' }}>◯</span>
           </div>
           <h1 style={{ fontSize: '1.875rem', fontWeight: 300, marginBottom: '12px' }}>
-            {hasCompletedMeditation ? 'Welcome Back' : 'Welcome to Buddha Balla'}
+            {hasCompletedMeditation ? 'Welcome Back' : 'Welcome to balladharma'}
           </h1>
           <p style={{ color: 'var(--muted)', lineHeight: 1.6 }}>
             {hasCompletedMeditation
