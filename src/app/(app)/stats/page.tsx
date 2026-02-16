@@ -322,27 +322,32 @@ function calculateStreaks(sessions: MeditationSession[]) {
 }
 
 function getLast30DaysData(sessions: MeditationSession[]) {
-  const data: { date: string; minutes: number; label: string }[] = []
   const today = new Date()
+  today.setHours(0, 0, 0, 0)
 
+  // Build a map of date -> total seconds in one pass
+  const dateMap = new Map<string, number>()
+  const thirtyDaysAgo = new Date(today)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+  for (const s of sessions) {
+    const sessionDate = new Date(s.started_at)
+    if (sessionDate < thirtyDaysAgo) continue
+    const key = `${sessionDate.getFullYear()}-${sessionDate.getMonth()}-${sessionDate.getDate()}`
+    dateMap.set(key, (dateMap.get(key) || 0) + s.duration_seconds)
+  }
+
+  // Build the 30-day array
+  const data: { date: string; minutes: number; label: string }[] = []
   for (let i = 29; i >= 0; i--) {
     const date = new Date(today)
     date.setDate(date.getDate() - i)
-    date.setHours(0, 0, 0, 0)
-
-    const nextDate = new Date(date)
-    nextDate.setDate(nextDate.getDate() + 1)
-
-    const daysSessions = sessions.filter(s => {
-      const sessionDate = new Date(s.started_at)
-      return sessionDate >= date && sessionDate < nextDate
-    })
-
-    const minutes = Math.floor(daysSessions.reduce((sum, s) => sum + s.duration_seconds, 0) / 60)
+    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+    const seconds = dateMap.get(key) || 0
 
     data.push({
       date: date.toISOString().split('T')[0],
-      minutes,
+      minutes: Math.floor(seconds / 60),
       label: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
     })
   }

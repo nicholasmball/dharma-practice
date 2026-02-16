@@ -135,17 +135,21 @@ export default function TeacherPage() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Load conversations and practice profile on mount
+  // Load conversations and practice profile in parallel on mount
   useEffect(() => {
-    loadConversations()
-    loadPracticeProfile()
+    const loadInitialData = async () => {
+      setLoadingConversations(true)
+      const [convs, profile] = await Promise.all([
+        getConversations(),
+        getPracticeProfile(),
+      ])
+      setConversations(convs)
+      setLoadingConversations(false)
+      const questions = selectPersonalizedQuestions(profile)
+      setSuggestedQuestions(questions)
+    }
+    loadInitialData()
   }, [])
-
-  const loadPracticeProfile = async () => {
-    const profile = await getPracticeProfile()
-    const questions = selectPersonalizedQuestions(profile)
-    setSuggestedQuestions(questions)
-  }
 
   const loadConversations = async () => {
     setLoadingConversations(true)

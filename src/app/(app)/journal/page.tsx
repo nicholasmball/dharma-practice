@@ -11,16 +11,19 @@ export default async function JournalPage({
   const params = await searchParams
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  // Run all queries in parallel
+  const [
+    { data: { user } },
+    { data: entries },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('journal_entries')
+      .select('*')
+      .order('created_at', { ascending: false }),
+  ])
 
-  let query = supabase
-    .from('journal_entries')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  const { data: entries } = await query
-
-  // Get custom practice types from user settings
+  // Get custom practice types (needs user.id from above)
   const { data: settings } = await supabase
     .from('user_settings')
     .select('custom_practice_types')

@@ -4,50 +4,41 @@ import Link from 'next/link'
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  // Get user
-  const { data: { user } } = await supabase.auth.getUser()
+  // Run all independent queries in parallel
+  const [
+    { data: { user } },
+    { data: allSessions },
+    { count: journalCount },
+    { count: conversationCount },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase
+      .from('meditation_sessions')
+      .select('*')
+      .eq('completed', true)
+      .order('started_at', { ascending: false }),
+    supabase
+      .from('journal_entries')
+      .select('*', { count: 'exact', head: true }),
+    supabase
+      .from('teacher_conversations')
+      .select('*', { count: 'exact', head: true }),
+  ])
 
-  // Get recent sessions
-  const { data: recentSessions } = await supabase
-    .from('meditation_sessions')
-    .select('*')
-    .eq('completed', true)
-    .order('started_at', { ascending: false })
-    .limit(5)
-
-  // Get total sessions count
-  const { count: totalSessions } = await supabase
-    .from('meditation_sessions')
-    .select('*', { count: 'exact', head: true })
-    .eq('completed', true)
-
-  // Get total meditation time
-  const { data: timeData } = await supabase
-    .from('meditation_sessions')
-    .select('duration_seconds')
-    .eq('completed', true)
-
-  const totalMinutes = timeData
-    ? Math.floor(timeData.reduce((sum, s) => sum + s.duration_seconds, 0) / 60)
+  // Derive everything from the single sessions query
+  const recentSessions = allSessions?.slice(0, 5) || null
+  const totalSessions = allSessions?.length || 0
+  const totalMinutes = allSessions
+    ? Math.floor(allSessions.reduce((sum, s) => sum + s.duration_seconds, 0) / 60)
     : 0
-
-  // Get journal entries count (for onboarding)
-  const { count: journalCount } = await supabase
-    .from('journal_entries')
-    .select('*', { count: 'exact', head: true })
-
-  // Get teacher conversations count (for onboarding)
-  const { count: conversationCount } = await supabase
-    .from('teacher_conversations')
-    .select('*', { count: 'exact', head: true })
 
   // Calculate streak (consecutive days)
   let currentStreak = 0
-  if (recentSessions && recentSessions.length > 0) {
+  if (allSessions && allSessions.length > 0) {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
-    const sessionDates = recentSessions.map(s => {
+    const sessionDates = allSessions.map(s => {
       const date = new Date(s.started_at)
       date.setHours(0, 0, 0, 0)
       return date.getTime()
@@ -76,7 +67,7 @@ export default async function DashboardPage() {
   const greeting = getGreeting()
 
   // Onboarding progress
-  const hasCompletedMeditation = (totalSessions || 0) > 0
+  const hasCompletedMeditation = totalSessions > 0
   const hasJournaled = (journalCount || 0) > 0
   const hasAskedTeacher = (conversationCount || 0) > 0
   const onboardingComplete = hasCompletedMeditation && hasJournaled && hasAskedTeacher
