@@ -134,6 +134,12 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
   const [newTypeDescription, setNewTypeDescription] = useState('')
   const [savingCustomTypes, setSavingCustomTypes] = useState(false)
 
+  // Feedback form state
+  const [feedbackType, setFeedbackType] = useState('feedback')
+  const [feedbackMessage, setFeedbackMessage] = useState('')
+  const [sendingFeedback, setSendingFeedback] = useState(false)
+  const [feedbackStatus, setFeedbackStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission)
@@ -277,6 +283,35 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
     }
 
     setSavingCustomTypes(false)
+  }
+
+  const handleFeedbackSubmit = async () => {
+    if (!feedbackMessage.trim()) return
+
+    setSendingFeedback(true)
+    setFeedbackStatus(null)
+
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: feedbackType, message: feedbackMessage }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        setFeedbackStatus({ type: 'error', text: data.error || 'Something went wrong.' })
+      } else {
+        setFeedbackStatus({ type: 'success', text: 'Thank you! Your feedback has been sent.' })
+        setFeedbackMessage('')
+        setFeedbackType('feedback')
+      }
+    } catch {
+      setFeedbackStatus({ type: 'error', text: 'Failed to send. Please try again later.' })
+    }
+
+    setSendingFeedback(false)
   }
 
   // Helper to get label for any practice type
@@ -805,6 +840,104 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
         >
           {exporting ? 'Exporting...' : 'Export All Data'}
         </button>
+      </section>
+
+      {/* Support & Feedback Section */}
+      <section style={{
+        backgroundColor: 'var(--surface)',
+        borderRadius: '16px',
+        border: '1px solid var(--border)',
+        padding: '24px',
+      }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '8px' }}>Support & Feedback</h2>
+        <p style={{ color: 'var(--muted)', fontSize: '0.875rem', marginBottom: '20px' }}>
+          Found a bug? Have a suggestion? Send us a message and we&apos;ll get back to you.
+        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '8px' }}>
+              Type
+            </label>
+            <select
+              value={feedbackType}
+              onChange={(e) => setFeedbackType(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--background)',
+                color: 'var(--foreground)',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="bug">Bug Report</option>
+              <option value="feature">Feature Request</option>
+              <option value="feedback">General Feedback</option>
+              <option value="question">Question</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '8px' }}>
+              Message
+            </label>
+            <textarea
+              value={feedbackMessage}
+              onChange={(e) => setFeedbackMessage(e.target.value)}
+              placeholder="Tell us what's on your mind..."
+              rows={4}
+              maxLength={5000}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--background)',
+                color: 'var(--foreground)',
+                outline: 'none',
+                resize: 'vertical',
+                fontFamily: 'inherit',
+                fontSize: '0.875rem',
+                lineHeight: '1.5',
+              }}
+            />
+          </div>
+
+          {feedbackStatus && (
+            <div style={{
+              padding: '12px 16px',
+              borderRadius: '10px',
+              backgroundColor: feedbackStatus.type === 'success' ? 'rgba(85, 176, 133, 0.1)' : 'rgba(224, 85, 85, 0.1)',
+              border: `1px solid ${feedbackStatus.type === 'success' ? 'rgba(85, 176, 133, 0.3)' : 'rgba(224, 85, 85, 0.3)'}`,
+              color: feedbackStatus.type === 'success' ? 'var(--success)' : 'var(--error)',
+              fontSize: '0.875rem',
+            }}>
+              {feedbackStatus.text}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleFeedbackSubmit}
+            disabled={!feedbackMessage.trim() || sendingFeedback}
+            style={{
+              padding: '12px 24px',
+              borderRadius: '10px',
+              border: 'none',
+              backgroundColor: feedbackMessage.trim() && !sendingFeedback ? 'var(--accent)' : 'var(--border)',
+              color: feedbackMessage.trim() && !sendingFeedback ? 'var(--background)' : 'var(--muted)',
+              cursor: feedbackMessage.trim() && !sendingFeedback ? 'pointer' : 'not-allowed',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              alignSelf: 'flex-start',
+            }}
+          >
+            {sendingFeedback ? 'Sending...' : 'Send Feedback'}
+          </button>
+        </div>
       </section>
 
       {/* Delete Account Section */}
