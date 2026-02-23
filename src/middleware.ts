@@ -10,11 +10,12 @@ export async function middleware(request: NextRequest) {
   const protectedRoutes = ['/dashboard', '/timer', '/journal', '/stats', '/teacher', '/settings']
   const authRoutes = ['/login', '/signup']
   const pathname = request.nextUrl.pathname
+  const isHome = pathname === '/'
 
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route))
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route))
 
-  if (isProtectedRoute || isAuthRoute) {
+  if (isProtectedRoute || isAuthRoute || isHome) {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -45,7 +46,7 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    if (isAuthRoute && user) {
+    if ((isAuthRoute || isHome) && user) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
