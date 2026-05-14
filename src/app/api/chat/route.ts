@@ -170,20 +170,40 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
 
     const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514'
 
-    const response = await client.messages.create({
-      model,
-      max_tokens: 1024,
-      system: SYSTEM_PROMPT + contextMessage,
-      messages: messages.map((m: { role: string; content: string }) => ({
-        role: m.role as 'user' | 'assistant',
-        content: m.content,
-      })),
+    const encoder = new TextEncoder()
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          const stream = client.messages.stream({
+            model,
+            max_tokens: 1024,
+            system: SYSTEM_PROMPT + contextMessage,
+            messages: messages.map((m: { role: string; content: string }) => ({
+              role: m.role as 'user' | 'assistant',
+              content: m.content,
+            })),
+          })
+
+          for await (const event of stream) {
+            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+              controller.enqueue(encoder.encode(event.delta.text))
+            }
+          }
+          controller.close()
+        } catch (error) {
+          console.error('Chat API stream error:', error instanceof Error ? error.message : 'Unknown error')
+          controller.error(error)
+        }
+      },
     })
 
-    const textContent = response.content.find(block => block.type === 'text')
-    const text = textContent && textContent.type === 'text' ? textContent.text : ''
-
-    return NextResponse.json({ message: text })
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-cache, no-transform',
+        'X-Accel-Buffering': 'no',
+      },
+    })
   } catch (error: unknown) {
     console.error('Chat API error:', error instanceof Error ? error.message : 'Unknown error')
     return NextResponse.json(

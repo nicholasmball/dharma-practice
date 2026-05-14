@@ -210,6 +210,8 @@ export default function TeacherPage() {
     setMessages(newMessages)
     setLoading(true)
 
+    let accumulated = ''
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -220,34 +222,75 @@ export default function TeacherPage() {
         }),
       })
 
-      const data = await response.json()
-
-      if (data.error) {
-        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: `I apologize, but I encountered an error: ${data.error}. Please try again.` }]
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({ error: 'something went wrong' }))
+        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: `I apologize, but I encountered an error: ${data.error || 'something went wrong'}. Please try again.` }]
         setMessages(errorMessages)
-      } else {
-        const updatedMessages: Message[] = [...newMessages, { role: 'assistant', content: data.message }]
-        setMessages(updatedMessages)
-
-        // Save conversation
-        if (activeConversationId) {
-          // Update existing conversation
-          await updateConversation(activeConversationId, updatedMessages)
-        } else {
-          // Create new conversation with title from first user message
-          const title = userMessage.length > 50 ? userMessage.substring(0, 50) + '...' : userMessage
-          const newId = await createConversation(title, updatedMessages)
-          if (newId) {
-            setActiveConversationId(newId)
-          }
-        }
-
-        // Refresh conversation list
-        loadConversations()
+        return
       }
+
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No response body')
+
+      const decoder = new TextDecoder()
+      let assistantAdded = false
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        accumulated += decoder.decode(value, { stream: true })
+
+        if (!assistantAdded) {
+          assistantAdded = true
+          setMessages([...newMessages, { role: 'assistant', content: accumulated }])
+        } else {
+          setMessages(prev => {
+            const updated = [...prev]
+            updated[updated.length - 1] = { role: 'assistant', content: accumulated }
+            return updated
+          })
+        }
+      }
+
+      accumulated += decoder.decode()
+
+      if (!accumulated) {
+        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: 'I apologize, but I received an empty response. Please try again.' }]
+        setMessages(errorMessages)
+        return
+      }
+
+      const updatedMessages: Message[] = [...newMessages, { role: 'assistant', content: accumulated }]
+
+      if (activeConversationId) {
+        await updateConversation(activeConversationId, updatedMessages)
+      } else {
+        const title = userMessage.length > 50 ? userMessage.substring(0, 50) + '...' : userMessage
+        const newId = await createConversation(title, updatedMessages)
+        if (newId) {
+          setActiveConversationId(newId)
+        }
+      }
+
+      loadConversations()
     } catch (error) {
-      const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: 'I apologize, but I had trouble connecting. Please check your internet connection and try again.' }]
-      setMessages(errorMessages)
+      if (accumulated) {
+        const partialMessages: Message[] = [...newMessages, { role: 'assistant', content: accumulated + '\n\n[Response was interrupted. Please ask again if you need more.]' }]
+        setMessages(partialMessages)
+        try {
+          if (activeConversationId) {
+            await updateConversation(activeConversationId, partialMessages)
+          } else {
+            const title = userMessage.length > 50 ? userMessage.substring(0, 50) + '...' : userMessage
+            const newId = await createConversation(title, partialMessages)
+            if (newId) setActiveConversationId(newId)
+          }
+          loadConversations()
+        } catch {}
+      } else {
+        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: 'I apologize, but I had trouble connecting. Please check your internet connection and try again.' }]
+        setMessages(errorMessages)
+      }
     } finally {
       setLoading(false)
     }
@@ -603,7 +646,7 @@ export default function TeacherPage() {
                   </div>
                 </div>
               ))}
-              {loading && (
+              {loading && messages.length > 0 && messages[messages.length - 1].role === 'user' && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <div style={{
                     padding: isMobile ? '10px 14px' : '14px 18px',
