@@ -168,7 +168,7 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
       contextMessage += '\n[END CONTEXT]\n'
     }
 
-    const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-20250514'
+    const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6'
 
     const encoder = new TextEncoder()
     const readableStream = new ReadableStream({
