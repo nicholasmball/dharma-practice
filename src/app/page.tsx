@@ -18,17 +18,14 @@ export default function Home() {
         </p>
 
         <Link
-          href="/signup"
+          href="/login"
           className="px-10 py-4 bg-[var(--accent)] text-[var(--background)] font-semibold rounded-xl hover:bg-[var(--accent-hover)] transition-colors text-center text-lg mb-4"
         >
           Start Your Practice
         </Link>
 
         <p className="text-[var(--muted)] text-sm">
-          Already have an account?{' '}
-          <Link href="/login" className="text-[var(--accent)] hover:underline">
-            Sign in
-          </Link>
+          balladharma is invite-only while we&rsquo;re in early access.
         </p>
       </section>
 
@@ -97,10 +94,10 @@ export default function Home() {
           Free to use. No ads. Just practice.
         </p>
         <Link
-          href="/signup"
+          href="/login"
           className="inline-block px-8 py-3 bg-[var(--accent)] text-[var(--background)] font-medium rounded-xl hover:bg-[var(--accent-hover)] transition-colors"
         >
-          Create Free Account
+          Sign In
         </Link>
       </section>
 

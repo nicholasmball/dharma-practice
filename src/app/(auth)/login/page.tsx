@@ -1,94 +1,13 @@
-'use client'
+import { Suspense } from 'react'
+import LoginScreen from './LoginScreen'
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { login } from '../actions'
-
+// Auth.js redirects back here with `?error=...` on a refused or failed
+// sign-in, so the screen needs access to search params — wrapped in
+// Suspense per Next.js App Router convention for that.
 export default function LoginPage() {
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  async function handleSubmit(formData: FormData) {
-    setLoading(true)
-    setError(null)
-
-    const result = await login(formData)
-
-    if (result?.error) {
-      setError(result.error)
-      setLoading(false)
-    }
-  }
-
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8">
-      <Link href="/" className="mb-8 opacity-60 hover:opacity-100 transition-opacity">
-        <div className="w-16 h-16 rounded-full border-2 border-[var(--accent)]" />
-      </Link>
-
-      <h1 className="text-3xl font-light mb-2">Welcome Back</h1>
-      <p className="text-[var(--muted)] mb-8">Continue your practice</p>
-
-      <form action={handleSubmit} className="w-full max-w-sm space-y-4">
-        {error && (
-          <div className="p-4 rounded-xl bg-[var(--error)]/10 border border-[var(--error)]/30 text-[var(--error)] text-sm">
-            {error}
-          </div>
-        )}
-
-        <div>
-          <label htmlFor="email" className="block text-sm font-medium text-[var(--muted)] mb-2">
-            Email
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            disabled={loading}
-            className="w-full px-4 py-3 bg-[var(--surface)] text-[var(--foreground)] rounded-xl border border-[var(--border)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] focus:outline-none disabled:opacity-50"
-            placeholder="you@example.com"
-          />
-        </div>
-
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label htmlFor="password" className="block text-sm font-medium text-[var(--muted)]">
-              Password
-            </label>
-            <Link href="/forgot-password" className="text-sm text-[var(--accent)] hover:underline" tabIndex={-1}>
-              Forgot password?
-            </Link>
-          </div>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            required
-            disabled={loading}
-            className="w-full px-4 py-3 bg-[var(--surface)] text-[var(--foreground)] rounded-xl border border-[var(--border)] placeholder-[var(--muted)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] focus:outline-none disabled:opacity-50"
-            placeholder="••••••••"
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full px-8 py-3 bg-[var(--accent)] text-[var(--background)] font-medium rounded-xl hover:bg-[var(--accent-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-        >
-          {loading && (
-            <span className="inline-block w-4 h-4 border-2 border-[var(--background)]/30 border-t-[var(--background)] rounded-full animate-spin" />
-          )}
-          {loading ? 'Signing in...' : 'Sign In'}
-        </button>
-      </form>
-
-      <p className="mt-8 text-[var(--muted)] text-sm">
-        New to balladharma?{' '}
-        <Link href="/signup" className="text-[var(--accent)] hover:underline">
-          Create an account
-        </Link>
-      </p>
-    </main>
+    <Suspense fallback={null}>
+      <LoginScreen />
+    </Suspense>
   )
 }
