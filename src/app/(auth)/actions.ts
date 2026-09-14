@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { siteUrl } from '@/lib/site-url'
 
 // In-memory rate limiter for auth actions
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
@@ -63,7 +64,7 @@ export async function signup(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://buddha-balla.com'}/dashboard`,
+      emailRedirectTo: siteUrl('/dashboard'),
     },
   })
 
@@ -116,7 +117,7 @@ export async function resetPasswordRequest(formData: FormData) {
   }
 
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://buddha-balla.com'}/reset-password`,
+    redirectTo: siteUrl('/reset-password'),
   })
 
   // Always return the same message regardless of whether email exists (prevents enumeration)
