@@ -1,14 +1,19 @@
-import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { auth } from '@/auth'
+
+// Auth.js's Google provider + the auth.users Postgres lookup pull in
+// Node-only packages (pg), so middleware needs the Node.js runtime rather
+// than the Edge default — Next.js has supported this since 15.2.
+export const runtime = 'nodejs'
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
+  const response = NextResponse.next({
     request,
   })
 
   // Only check auth for routes that actually need it (protected + auth pages)
   const protectedRoutes = ['/dashboard', '/timer', '/journal', '/stats', '/teacher', '/settings']
-  const authRoutes = ['/login', '/signup']
+  const authRoutes = ['/login', '/signup', '/forgot-password', '/reset-password']
   const pathname = request.nextUrl.pathname
   const isHome = pathname === '/'
 
@@ -16,37 +21,16 @@ export async function middleware(request: NextRequest) {
   const isAuthRoute = authRoutes.some(route => pathname.startsWith(route))
 
   if (isProtectedRoute || isAuthRoute || isHome) {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return request.cookies.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-            supabaseResponse = NextResponse.next({
-              request,
-            })
-            cookiesToSet.forEach(({ name, value, options }) =>
-              supabaseResponse.cookies.set(name, value, options)
-            )
-          },
-        },
-      }
-    )
+    const session = await auth()
+    const isSignedIn = Boolean(session?.user)
 
-    // Refresh session if expired - required for Server Components
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (isProtectedRoute && !user) {
+    if (isProtectedRoute && !isSignedIn) {
       const url = request.nextUrl.clone()
       url.pathname = '/login'
       return NextResponse.redirect(url)
     }
 
-    if ((isAuthRoute || isHome) && user) {
+    if ((isAuthRoute || isHome) && isSignedIn) {
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
@@ -54,26 +38,29 @@ export async function middleware(request: NextRequest) {
   }
 
   // Add security headers
-  supabaseResponse.headers.set('X-Content-Type-Options', 'nosniff')
-  supabaseResponse.headers.set('X-Frame-Options', 'DENY')
-  supabaseResponse.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  supabaseResponse.headers.set('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()')
-  supabaseResponse.headers.set(
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(self), geolocation=()')
+  response.headers.set(
     'Content-Security-Policy',
     [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      "img-src 'self' data: blob: https://*.googleusercontent.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co https://api.anthropic.com",
+      // accounts.google.com is where the OAuth consent redirect goes;
+      // supabase.co stays until Move 5 finishes the data-layer cutover.
+      "connect-src 'self' https://*.supabase.co https://api.anthropic.com https://accounts.google.com",
+      "frame-src 'self' https://accounts.google.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
+      "form-action 'self' https://accounts.google.com",
     ].join('; ')
   )
 
-  return supabaseResponse
+  return response
 }
 
 export const config = {
