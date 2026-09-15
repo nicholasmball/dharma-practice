@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd job for the dharma-practice (balladharma) Next.js web app on the
+  Mac mini.
+
+  Label is `com.dharma.web` — deliberately NOT `com.favourites.*` or
+  `com.ballabot.*`. Favourites' and Balla Bot's own unload/redeploy scripts
+  only ever touch labels under their own prefix, so keeping a distinct
+  `com.dharma.*` prefix means a Favourites or Balla Bot redeploy can never
+  clobber this service (and vice versa).
+
+  Runs `npm run start -- -H 127.0.0.1 -p 8098` (next start, loopback only,
+  distinct port from Favourites' 8094) via `/bin/zsh -lc` because launchd's
+  non-interactive shell doesn't have /opt/homebrew/bin on PATH, and a login
+  shell is needed to resolve npm/node. Reads its config from .env.local
+  (secrets, chmod 600, never committed) already in place in the repo.
+
+  Install: copy to ~/Library/LaunchAgents/com.dharma.web.plist
+  (scripts/mini/install.sh does this for you), then
+  `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dharma.web.plist`.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dharma.web</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>cd /Users/nickball/projects/dharma-practice &amp;&amp; npm run start -- -H 127.0.0.1 -p 8098</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nickball/projects/dharma-practice</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nickball/Library/Logs/dharma/web.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nickball/Library/Logs/dharma/web.log</string>
+
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>8192</integer>
+    </dict>
+</dict>
+</plist>

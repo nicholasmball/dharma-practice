@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd timer that self-updates the dharma-practice (balladharma) web app
+  on the Mac mini.
+
+  Label is `com.dharma.updatecheck` — deliberately NOT `com.favourites.*` or
+  `com.ballabot.*`, same reasoning as com.dharma.web.plist in this
+  directory.
+
+  Every 300s runs scripts/mini/deploy.sh, which takes a staleness-aware
+  lock, fetches DEPLOY_BRANCH (default: mini-migration), and — if origin has
+  moved on and the working tree is clean — fast-forwards, rebuilds, and
+  restarts com.dharma.web. RunAtLoad is false — no need to deploy the
+  instant the mini boots, the KeepAlive web job already starts what's on
+  disk; the next tick within 5 minutes is soon enough.
+
+  Install: copy to ~/Library/LaunchAgents/com.dharma.updatecheck.plist
+  (scripts/mini/install.sh does this for you), then
+  `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dharma.updatecheck.plist`.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dharma.updatecheck</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>/Users/nickball/projects/dharma-practice/scripts/mini/deploy.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nickball/projects/dharma-practice</string>
+
+    <key>StartInterval</key>
+    <integer>300</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nickball/Library/Logs/dharma/deploy.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nickball/Library/Logs/dharma/deploy.log</string>
+</dict>
+</plist>
