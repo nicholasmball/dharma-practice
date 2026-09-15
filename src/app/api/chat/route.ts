@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { NextRequest, NextResponse } from 'next/server'
 
 const client = new Anthropic({
@@ -86,10 +87,8 @@ Remember: Your role is to point at the moon, not to be worshipped. Help practiti
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
     // Verify user is authenticated
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -124,6 +123,8 @@ export async function POST(request: NextRequest) {
     let contextMessage = ''
 
     if (includeContext) {
+      const supabase = await createClient()
+
       // Get recent sessions
       const { data: sessions } = await supabase
         .from('meditation_sessions')

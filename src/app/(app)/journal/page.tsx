@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import Link from 'next/link'
 import { JournalEntry, CustomPracticeType } from '@/lib/types'
 import JournalList from './JournalList'
@@ -9,26 +10,23 @@ export default async function JournalPage({
   searchParams: Promise<{ search?: string; tag?: string; type?: string }>
 }) {
   const params = await searchParams
-  const supabase = await createClient()
+  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()])
 
-  // Run all queries in parallel
+  // Run the entries and settings queries in parallel
   const [
-    { data: { user } },
     { data: entries },
+    { data: settings },
   ] = await Promise.all([
-    supabase.auth.getUser(),
     supabase
       .from('journal_entries')
       .select('*')
       .order('created_at', { ascending: false }),
+    supabase
+      .from('user_settings')
+      .select('custom_practice_types')
+      .eq('user_id', user?.id)
+      .single(),
   ])
-
-  // Get custom practice types (needs user.id from above)
-  const { data: settings } = await supabase
-    .from('user_settings')
-    .select('custom_practice_types')
-    .eq('user_id', user?.id)
-    .single()
 
   const customPracticeTypes = (settings?.custom_practice_types as CustomPracticeType[]) || []
 

@@ -1,11 +1,10 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import TimerClient from './TimerClient'
 import { CustomPracticeType } from '@/lib/types'
 
 export default async function TimerPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()])
 
   const { data: settings } = await supabase
     .from('user_settings')

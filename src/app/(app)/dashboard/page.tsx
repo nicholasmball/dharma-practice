@@ -1,17 +1,17 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
 
-  // Run all independent queries in parallel
+  // Run all independent queries in parallel (RLS on the mini scopes each
+  // one to the signed-in user via the client's token, so there's no
+  // separate getUser() call needed here)
   const [
-    { data: { user } },
     { data: allSessions },
     { count: journalCount },
     { count: conversationCount },
   ] = await Promise.all([
-    supabase.auth.getUser(),
     supabase
       .from('meditation_sessions')
       .select('*')

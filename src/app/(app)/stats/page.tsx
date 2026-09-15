@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
 import { MeditationSession, practiceTypeLabels, PracticeType, BADGES, getEarnedBadgeIds } from '@/lib/types'
 import StatsCharts from './StatsCharts'
 

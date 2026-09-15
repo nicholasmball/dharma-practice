@@ -10,9 +10,9 @@ export interface CurrentUser {
  *
  * `id` is the mapped internal UUID set by the signIn callback in
  * src/auth.ts (the same value minted into the PostgREST token's `sub`
- * claim), not Google's own account id — this is the contract Move 5 will
- * build on when it switches the ~25 existing `supabase.auth.getUser()`
- * call sites over to the mini gateway.
+ * claim), not Google's own account id — this is the contract Move 5 built
+ * on when it switched the app's `supabase.auth.getUser()` call sites over
+ * to the mini gateway.
  *
  * Never throws for a signed-out visitor; callers decide whether to redirect.
  */

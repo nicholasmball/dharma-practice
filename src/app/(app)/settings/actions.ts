@@ -1,13 +1,15 @@
 'use server'
 
-import { createClient, deleteUserAccount } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { deleteUserAccount } from '@/lib/auth/delete-user'
+import { signOut } from '@/auth'
 import { revalidatePath } from 'next/cache'
 import { CustomPracticeType } from '@/lib/types'
 
 export async function getCustomPracticeTypes(): Promise<CustomPracticeType[]> {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return []
@@ -23,9 +25,8 @@ export async function getCustomPracticeTypes(): Promise<CustomPracticeType[]> {
 }
 
 export async function saveCustomPracticeTypes(customTypes: CustomPracticeType[]) {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Not authenticated' }
@@ -74,9 +75,8 @@ export async function updateSettings(data: {
   default_practice_type: string
   bell_sound: string
 }) {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Not authenticated' }
@@ -115,9 +115,8 @@ export async function updateSettings(data: {
 }
 
 export async function exportUserData() {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Not authenticated' }
@@ -154,9 +153,8 @@ export async function exportUserData() {
 }
 
 export async function deleteAccount() {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Not authenticated' }
@@ -199,15 +197,15 @@ export async function deleteAccount() {
     return { error: 'Failed to delete settings: ' + settingsError.message }
   }
 
-  // Delete the user from Supabase Auth using safe admin wrapper
+  // Delete the user's auth.users row on the mini
   const deleteResult = await deleteUserAccount(user.id)
 
-  if (deleteResult.error) {
+  if ('error' in deleteResult) {
     return { error: 'Failed to delete user account: ' + deleteResult.error }
   }
 
-  // Sign out the user (clears local session)
-  await supabase.auth.signOut()
+  // Sign out the user (clears the Auth.js session cookie)
+  await signOut({ redirect: false })
 
   return { success: true }
 }

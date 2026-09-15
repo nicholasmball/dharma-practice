@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 
@@ -47,10 +47,8 @@ const VALID_TYPES = ['bug', 'feature', 'feedback', 'question'] as const
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-
     // Verify user is authenticated
-    const { data: { user } } = await supabase.auth.getUser()
+    const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }

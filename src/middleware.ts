@@ -50,9 +50,11 @@ export async function middleware(request: NextRequest) {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.googleusercontent.com",
       "font-src 'self' https://fonts.gstatic.com",
-      // accounts.google.com is where the OAuth consent redirect goes;
-      // supabase.co stays until Move 5 finishes the data-layer cutover.
-      "connect-src 'self' https://*.supabase.co https://api.anthropic.com https://accounts.google.com",
+      // accounts.google.com is where the OAuth consent redirect goes. The
+      // PostgREST client runs server-side only (see src/lib/postgrest/client.ts),
+      // so the mini's PostgREST endpoint never needs to be reachable from
+      // the browser and doesn't belong in this connect-src.
+      "connect-src 'self' https://api.anthropic.com https://accounts.google.com",
       "frame-src 'self' https://accounts.google.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",

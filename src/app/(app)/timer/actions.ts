@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { revalidatePath } from 'next/cache'
 import { BuiltInPracticeType, practiceTypeLabels, BUILT_IN_PRACTICE_TYPES, CustomPracticeType } from '@/lib/types'
 
@@ -9,9 +10,8 @@ export async function saveSession(data: {
   practice_type: string
   notes?: string
 }) {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Not authenticated' }

@@ -1,10 +1,9 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import SettingsForm from './SettingsForm'
 
 export default async function SettingsPage() {
-  const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
+  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()])
 
   const { data: settings } = await supabase
     .from('user_settings')

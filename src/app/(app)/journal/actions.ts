@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { PracticeType } from '@/lib/types'
@@ -11,9 +12,8 @@ export async function createJournalEntry(data: {
   tags: string[]
   practice_type?: PracticeType
 }) {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Not authenticated' }
@@ -41,9 +41,8 @@ export async function updateJournalEntry(id: string, data: {
   tags: string[]
   practice_type?: PracticeType
 }) {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Not authenticated' }
@@ -70,9 +69,8 @@ export async function updateJournalEntry(id: string, data: {
 }
 
 export async function deleteJournalEntry(id: string) {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
     return { error: 'Not authenticated' }

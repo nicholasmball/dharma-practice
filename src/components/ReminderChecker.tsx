@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
 
 export default function ReminderChecker() {
   useEffect(() => {
@@ -11,16 +10,20 @@ export default function ReminderChecker() {
         return
       }
 
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      // The mini's PostgREST token is minted server-side only, so a client
+      // component can't query user_settings directly anymore — it goes
+      // through this route instead (see src/app/api/reminders/route.ts).
+      const response = await fetch('/api/reminders')
+      if (!response.ok) return
 
-      if (!user) return
-
-      const { data: settings } = await supabase
-        .from('user_settings')
-        .select('*')
-        .eq('user_id', user.id)
-        .single()
+      const { settings } = await response.json() as {
+        settings: {
+          meditation_reminder_enabled: boolean
+          meditation_reminder_time: string | null
+          journal_reminder_enabled: boolean
+          journal_reminder_time: string | null
+        } | null
+      }
 
       if (!settings) return
 

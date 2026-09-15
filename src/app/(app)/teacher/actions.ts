@@ -1,6 +1,7 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { revalidatePath } from 'next/cache'
 
 export interface Message {
@@ -17,9 +18,8 @@ export interface Conversation {
 }
 
 export async function getConversations(): Promise<Conversation[]> {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
 
   const { data } = await supabase
@@ -32,9 +32,8 @@ export async function getConversations(): Promise<Conversation[]> {
 }
 
 export async function getConversation(id: string): Promise<Conversation | null> {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const { data } = await supabase
@@ -48,9 +47,8 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 }
 
 export async function createConversation(title: string, messages: Message[]): Promise<string | null> {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const { data, error } = await supabase
@@ -73,9 +71,8 @@ export async function createConversation(title: string, messages: Message[]): Pr
 }
 
 export async function updateConversation(id: string, messages: Message[], title?: string): Promise<boolean> {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
 
   const updateData: { messages: Message[]; updated_at: string; title?: string } = {
@@ -103,9 +100,8 @@ export async function updateConversation(id: string, messages: Message[], title?
 }
 
 export async function deleteConversation(id: string): Promise<boolean> {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
 
   const { error } = await supabase
@@ -131,9 +127,8 @@ export interface PracticeProfile {
 }
 
 export async function getPracticeProfile(): Promise<PracticeProfile> {
+  const user = await getCurrentUser()
   const supabase = await createClient()
-
-  const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     return { sessionCount: 0, dominantPracticeType: null, daysSinceLastSession: null, currentStreak: 0 }
   }
