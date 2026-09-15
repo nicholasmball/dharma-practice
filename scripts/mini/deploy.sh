@@ -173,10 +173,11 @@ if [[ "$DRY_RUN" == "1" ]]; then
   exit 0
 fi
 
-log "polling $HEALTH_URL (up to 180s)"
+log "polling $HEALTH_URL (up to 300s)"
+sleep 8   # grace: let a hard restart free+rebind the port before polling
 ELAPSED=0
 INTERVAL=5
-TIMEOUT=180
+TIMEOUT=300
 while (( ELAPSED < TIMEOUT )); do
   if BODY="$(curl -fsS --max-time 3 "$HEALTH_URL" 2>/dev/null)"; then
     log "healthy after ${ELAPSED}s: $BODY"
