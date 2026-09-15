@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd timer for the nightly dharma-practice database backup to the
+  NAS. Mirrors com.favourites.dbbackup.plist.
+
+  Label is `com.dharma.dbbackup` — deliberately NOT `com.ballabot.*`, same
+  reasoning as the Favourites plists: Balla Bot's own unload script
+  deletes every `com.ballabot.*.plist` it finds, so sharing that prefix
+  would make this job collateral damage the next time Balla Bot is
+  redeployed.
+
+  Runs scripts/mini/backup-db.sh at 03:40 local time (StartCalendarInterval
+  — a fixed daily time, not a fixed interval from load time, so it lands at
+  the same clock time regardless of when the mini last rebooted). Offset
+  10 minutes after Favourites' 03:30 backup so the two nightly dumps don't
+  contend for NAS/SMB bandwidth at the same instant. RunAtLoad is false —
+  no need to dump the database the instant the mini boots.
+
+  backup-db.sh does the real work: mount check, pg_dump, size/table sanity
+  checks, copy-then-rename onto the NAS, weekly globals file, prune to 30
+  dumps, and a Telegram alert (via lib-notify.sh's notify_telegram) on any
+  failure. This plist only owns the schedule.
+
+  Install: copy to ~/Library/LaunchAgents/com.dharma.dbbackup.plist, then
+  `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dharma.dbbackup.plist`.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dharma.dbbackup</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>/Users/nickball/projects/dharma-practice/scripts/mini/backup-db.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nickball/projects/dharma-practice</string>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>3</integer>
+        <key>Minute</key>
+        <integer>40</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nickball/Library/Logs/dharma/dbbackup.launchd.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nickball/Library/Logs/dharma/dbbackup.launchd.log</string>
+</dict>
+</plist>

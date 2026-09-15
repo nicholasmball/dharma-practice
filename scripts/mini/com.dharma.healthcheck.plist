@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd timer for the dharma-practice health check on the Mac mini.
+  Mirrors com.favourites.healthcheck.plist.
+
+  Label is `com.dharma.healthcheck` — deliberately NOT `com.ballabot.*`,
+  same reasoning as the Favourites plists: Balla Bot's own unload script
+  deletes every `com.ballabot.*.plist` it finds, so sharing that prefix
+  would make this job collateral damage the next time Balla Bot is
+  redeployed.
+
+  Runs scripts/mini/healthcheck.sh every 600s (StartInterval — a fixed
+  poll from load time is fine here, there's no need for clock alignment).
+  RunAtLoad is true so a fresh boot/redeploy gets an initial check instead
+  of waiting up to 10 minutes for the first one.
+
+  healthcheck.sh does the real work: web app + PostgREST reachability,
+  backup freshness, deploy diary silence, and a Telegram alert (via
+  lib-notify.sh's notify_telegram) after two consecutive failures,
+  re-alerting at most hourly, with a recovery message once checks pass
+  again. It stands down while a deploy is in progress (deploy.sh's lock
+  dir). This plist only owns the schedule.
+
+  Install: copy to ~/Library/LaunchAgents/com.dharma.healthcheck.plist,
+  then `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dharma.healthcheck.plist`.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dharma.healthcheck</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-lc</string>
+        <string>/Users/nickball/projects/dharma-practice/scripts/mini/healthcheck.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nickball/projects/dharma-practice</string>
+
+    <key>StartInterval</key>
+    <integer>600</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nickball/Library/Logs/dharma/healthcheck.launchd.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nickball/Library/Logs/dharma/healthcheck.launchd.log</string>
+</dict>
+</plist>

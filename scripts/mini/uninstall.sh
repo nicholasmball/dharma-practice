@@ -1,10 +1,12 @@
 #!/bin/zsh
 #
 # uninstall.sh — rollback for the dharma-practice (balladharma) launchd
-# services on the Mac mini. Boots out com.dharma.web and
-# com.dharma.updatecheck and removes their copied plists from
-# ~/Library/LaunchAgents/. Leaves the repo, .env.local, and logs under
-# ~/Library/Logs/dharma untouched.
+# services on the Mac mini. Boots out com.dharma.web,
+# com.dharma.updatecheck, com.dharma.dbbackup, and com.dharma.healthcheck,
+# and removes their copied plists from ~/Library/LaunchAgents/. Leaves the
+# repo, .env.local, and logs under ~/Library/Logs/dharma untouched. Never
+# touches com.dharma.postgrest, or anything under com.favourites.* /
+# com.ballabot.*.
 #
 # This script DOES contain launchctl bootout commands — that's the point,
 # it's the rollback tool — but it is not run as part of install/deploy. An
@@ -21,7 +23,7 @@ set -euo pipefail
 LAUNCH_AGENTS_DIR="$HOME/Library/LaunchAgents"
 DRY_RUN="${DRY_RUN:-0}"
 
-LABELS=(com.dharma.web com.dharma.updatecheck)
+LABELS=(com.dharma.web com.dharma.updatecheck com.dharma.dbbackup com.dharma.healthcheck)
 
 log() {
   print -- "[uninstall] $*"
