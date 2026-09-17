@@ -123,29 +123,33 @@ export async function POST(request: NextRequest) {
     let contextMessage = ''
 
     if (includeContext) {
-      const supabase = await createClient()
+      const db = await createClient()
 
       // Get recent sessions
-      const { data: sessions } = await supabase
+      const { data: sessions } = await db
         .from('meditation_sessions')
         .select('*')
         .eq('completed', true)
         .order('started_at', { ascending: false })
-        .limit(10)
+        .limit(15)
 
-      // Get recent journal entries
-      const { data: entries } = await supabase
+      // Get recent journal entries (full content — the teacher must be able to
+      // read a practitioner's entries in their entirety, not a truncated preview)
+      const { data: entries } = await db
         .from('journal_entries')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(5)
+        .limit(25)
+
+      // Header makes clear this is REAL, COMPLETE data the practitioner recorded,
+      // so the teacher never disowns it or claims it fabricated the details.
+      contextMessage += `\n\n[PRACTITIONER CONTEXT — this is real data the practitioner has recorded in the app (their own meditation sessions and journal entries, shown in full below). Treat every detail as genuine and accurate. Never claim you fabricated it, invented it, or lack access to it. If something you want is not present here, simply ask them for it.]`
 
       if (sessions && sessions.length > 0) {
         const totalMinutes = Math.floor(sessions.reduce((sum, s) => sum + s.duration_seconds, 0) / 60)
         const practiceTypes = [...new Set(sessions.map(s => s.practice_type))]
 
-        contextMessage += `\n\n[PRACTITIONER CONTEXT]
-Recent practice: ${sessions.length} sessions totaling ${totalMinutes} minutes.
+        contextMessage += `\n\nRecent practice: ${sessions.length} sessions totaling ${totalMinutes} minutes.
 Practice types: ${practiceTypes.join(', ')}.
 Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].duration_seconds / 60)} minutes on ${new Date(sessions[0].started_at).toLocaleDateString()}.`
 
@@ -155,48 +159,92 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
       }
 
       if (entries && entries.length > 0) {
-        contextMessage += `\n\nRecent journal entries:`
-        entries.slice(0, 3).forEach(entry => {
-          const preview = entry.content.length > 300 ? entry.content.substring(0, 300) + '...' : entry.content
-          contextMessage += `\n- ${entry.title || 'Untitled'} (${new Date(entry.created_at).toLocaleDateString()}): "${preview}"`
+        contextMessage += `\n\nJournal entries (most recent first, shown in full):`
+        entries.forEach(entry => {
+          const heading = `${entry.title || 'Untitled'} (${new Date(entry.created_at).toLocaleDateString()})${entry.practice_type ? ' · ' + entry.practice_type : ''}`
+          contextMessage += `\n\n--- ${heading} ---\n${entry.content}`
         })
       }
 
       if (!sessions?.length && !entries?.length) {
-        contextMessage += `\n\n[PRACTITIONER CONTEXT]\nThis practitioner is just beginning their journey - no sessions or journal entries yet.`
+        contextMessage += `\n\nThis practitioner is just beginning their journey - no sessions or journal entries yet.`
       }
 
       contextMessage += '\n[END CONTEXT]\n'
     }
 
-    const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6'
-
+    // Which backend answers the teacher chat: "anthropic" (direct Anthropic API,
+    // the default) or "ballabot" (the mini's local dharma-llm service, backed by
+    // Balla Bot's Claude Code subscription — no per-message API cost). Move 13.
+    const provider = (process.env.LLM_PROVIDER || 'anthropic').toLowerCase()
+    const fullSystem = SYSTEM_PROMPT + contextMessage
+    const chatMessages = messages.map((m: { role: string; content: string }) => ({
+      role: m.role as 'user' | 'assistant',
+      content: m.content,
+    }))
+    const MAX_TOKENS = 1024
     const encoder = new TextEncoder()
-    const readableStream = new ReadableStream({
-      async start(controller) {
-        try {
-          const stream = client.messages.stream({
-            model,
-            max_tokens: 1024,
-            system: SYSTEM_PROMPT + contextMessage,
-            messages: messages.map((m: { role: string; content: string }) => ({
-              role: m.role as 'user' | 'assistant',
-              content: m.content,
-            })),
-          })
 
-          for await (const event of stream) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              controller.enqueue(encoder.encode(event.delta.text))
+    const readableStream = provider === 'ballabot'
+      ? new ReadableStream({
+          // Route the teacher chat through Balla Bot's local dharma-llm service
+          // (loopback on the mini). It streams plain text back, which we pass
+          // straight through to the browser.
+          async start(controller) {
+            try {
+              const res = await fetch(`${process.env.DHARMA_LLM_URL}/chat`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${process.env.DHARMA_LLM_TOKEN ?? ''}`,
+                },
+                body: JSON.stringify({
+                  system: fullSystem,
+                  messages: chatMessages,
+                  max_tokens: MAX_TOKENS,
+                }),
+              })
+
+              if (!res.ok || !res.body) {
+                const detail = await res.text().catch(() => '')
+                throw new Error(`dharma-llm responded ${res.status} ${detail.slice(0, 200)}`)
+              }
+
+              const reader = res.body.getReader()
+              for (;;) {
+                const { done, value } = await reader.read()
+                if (done) break
+                if (value) controller.enqueue(value)
+              }
+              controller.close()
+            } catch (error) {
+              console.error('Chat API stream error (ballabot):', error instanceof Error ? error.message : 'Unknown error')
+              controller.error(error)
             }
-          }
-          controller.close()
-        } catch (error) {
-          console.error('Chat API stream error:', error instanceof Error ? error.message : 'Unknown error')
-          controller.error(error)
-        }
-      },
-    })
+          },
+        })
+      : new ReadableStream({
+          async start(controller) {
+            try {
+              const stream = client.messages.stream({
+                model: process.env.CLAUDE_MODEL || 'claude-sonnet-4-6',
+                max_tokens: MAX_TOKENS,
+                system: fullSystem,
+                messages: chatMessages,
+              })
+
+              for await (const event of stream) {
+                if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                  controller.enqueue(encoder.encode(event.delta.text))
+                }
+              }
+              controller.close()
+            } catch (error) {
+              console.error('Chat API stream error:', error instanceof Error ? error.message : 'Unknown error')
+              controller.error(error)
+            }
+          },
+        })
 
     return new Response(readableStream, {
       headers: {

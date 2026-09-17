@@ -1,8 +1,16 @@
 # balladharma - Project Documentation
 
-A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
+A Buddhist meditation practice app built with Next.js, self-hosted on a Mac mini.
 
-**Live at:** https://buddha-balla.com (landing page and app are on the same domain — app pages are behind auth)
+**Live at:** https://dharma.balla-bot.uk (invite-only; Google sign-in, behind Cloudflare Access)
+
+> **Migration note (Sep 2026):** The app was migrated off Vercel + Supabase onto a self-hosted
+> Mac mini. It now runs as a launchd service (`com.dharma.web`, Next.js on 127.0.0.1:8098) behind a
+> Cloudflare tunnel + Access at `dharma.balla-bot.uk`, backed by local **Postgres 17 + PostgREST**,
+> with **Auth.js (Google sign-in)** replacing Supabase Auth. The old `buddha-balla.com` on Vercel and
+> the Supabase project were decommissioned in Mini move 11. Nightly DB backups go to the NAS.
+> The AI teacher still calls the **Anthropic API directly** — that key stays until Mini move 13 routes
+> AI through Balla Bot. Historical Supabase/Vercel details below are kept for reference only.
 
 ## Table of Contents
 - [About the Developer](#about-the-developer)
@@ -36,13 +44,13 @@ A Buddhist meditation practice app built with Next.js, Supabase, and Claude AI.
 - **Framework:** Next.js 16 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS v4 + Inline styles (for reliability)
-- **Database:** Supabase (PostgreSQL)
-- **Authentication:** Supabase Auth
-- **Email:** Resend (SMTP)
-- **AI:** Anthropic Claude API
+- **Database:** Self-hosted PostgreSQL 17 on the Mac mini (loopback), data API via **PostgREST** (127.0.0.1:8097). *(was: Supabase)*
+- **Authentication:** **Auth.js (NextAuth) with Google sign-in**, app-minted PostgREST JWTs, invite-only email allowlist. *(was: Supabase Auth)*
+- **Email:** Resend (SMTP) — still sends from `buddha-balla.com`
+- **AI:** Anthropic Claude API (direct; stays until Mini move 13)
 - **PWA:** next-pwa (offline support, installable)
-- **Hosting:** Vercel
-- **Domain:** Namecheap
+- **Hosting:** **Mac mini** — Next.js via launchd (`com.dharma.web`), served through a **Cloudflare tunnel + Access**. *(was: Vercel)*
+- **Domain:** `dharma.balla-bot.uk` (Cloudflare-managed). *(old `buddha-balla.com` was on Namecheap → Vercel, now retired)*
 
 ## Project Structure
 
