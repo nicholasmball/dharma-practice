@@ -7,6 +7,9 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+// Models the mini's local dharma-llm service will accept in the ballabot `model` field.
+const TEACHER_MODEL_ALLOWLIST = ['claude-sonnet-5', 'claude-opus-5']
+
 // In-memory rate limiter (per user)
 // Tracks: { [userId]: { count: number, resetTime: number }[] }
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
@@ -192,6 +195,25 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
           // straight through to the browser.
           async start(controller) {
             try {
+              // Look up the practitioner's chosen teacher depth. A failure here
+              // should never break the chat — just fall back to the service's
+              // own default model.
+              let teacherModel: string | undefined
+              try {
+                const db = await createClient()
+                const { data: s } = await db
+                  .from('user_settings')
+                  .select('teacher_model')
+                  .eq('user_id', user.id)
+                  .single()
+
+                if (s?.teacher_model && TEACHER_MODEL_ALLOWLIST.includes(s.teacher_model)) {
+                  teacherModel = s.teacher_model
+                }
+              } catch (settingsError) {
+                console.error('Chat API teacher_model lookup failed:', settingsError instanceof Error ? settingsError.message : 'Unknown error')
+              }
+
               const res = await fetch(`${process.env.DHARMA_LLM_URL}/chat`, {
                 method: 'POST',
                 headers: {
@@ -202,6 +224,7 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
                   system: fullSystem,
                   messages: chatMessages,
                   max_tokens: MAX_TOKENS,
+                  ...(teacherModel ? { model: teacherModel } : {}),
                 }),
               })
 

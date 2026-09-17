@@ -74,6 +74,7 @@ export async function updateSettings(data: {
   default_session_duration: number
   default_practice_type: string
   bell_sound: string
+  teacher_model: string | null
 }) {
   const user = await getCurrentUser()
   const supabase = await createClient()

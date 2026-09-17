@@ -104,6 +104,7 @@ interface SettingsFormProps {
     default_practice_type: string
     custom_practice_types?: CustomPracticeType[]
     bell_sound?: string
+    teacher_model?: string
   } | null
   userEmail: string
 }
@@ -127,6 +128,7 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
   const [defaultDuration, setDefaultDuration] = useState(initialSettings?.default_session_duration || 1200)
   const [defaultPracticeType, setDefaultPracticeType] = useState(initialSettings?.default_practice_type || 'shamatha')
   const [bellSound, setBellSound] = useState(initialSettings?.bell_sound || 'singing_bowl')
+  const [teacherModel, setTeacherModel] = useState(initialSettings?.teacher_model || 'claude-sonnet-5')
 
   // Custom practice types state
   const [customTypes, setCustomTypes] = useState<CustomPracticeType[]>(initialSettings?.custom_practice_types || [])
@@ -171,6 +173,7 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
       default_session_duration: defaultDuration,
       default_practice_type: defaultPracticeType,
       bell_sound: bellSound,
+      teacher_model: teacherModel,
     })
 
     if (result.error) {
@@ -424,6 +427,65 @@ export default function SettingsForm({ initialSettings, userEmail }: SettingsFor
             </button>
           </div>
         </div>
+      </section>
+
+      {/* Teacher Section */}
+      <section style={{
+        backgroundColor: 'var(--surface)',
+        borderRadius: '16px',
+        border: '1px solid var(--border)',
+        padding: '24px',
+      }}>
+        <h2 style={{ fontSize: '1.125rem', fontWeight: 500, marginBottom: '16px' }}>Teacher</h2>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ marginBottom: '4px' }}>Teacher Depth</p>
+            <p style={{ color: 'var(--muted)', fontSize: '0.875rem' }}>
+              Choose how the AI teacher responds
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => setTeacherModel('claude-sonnet-5')}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '10px',
+                border: teacherModel === 'claude-sonnet-5' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                backgroundColor: teacherModel === 'claude-sonnet-5' ? 'var(--background)' : 'transparent',
+                color: 'var(--foreground)',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span style={{ fontSize: '1rem' }}>⚖️</span> Balanced
+            </button>
+            <button
+              type="button"
+              onClick={() => setTeacherModel('claude-opus-5')}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '10px',
+                border: teacherModel === 'claude-opus-5' ? '2px solid var(--accent)' : '1px solid var(--border)',
+                backgroundColor: teacherModel === 'claude-opus-5' ? 'var(--background)' : 'transparent',
+                color: 'var(--foreground)',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
+            >
+              <span style={{ fontSize: '1rem' }}>🧘</span> Deep
+            </button>
+          </div>
+        </div>
+        <p style={{ color: 'var(--muted)', fontSize: '0.75rem', marginTop: '12px' }}>
+          Balanced is faster and lighter. Deep gives more nuanced answers but uses more of your weekly AI allowance.
+        </p>
       </section>
 
       {/* Defaults Section */}

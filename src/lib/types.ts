@@ -49,6 +49,7 @@ export interface UserSettings {
   default_practice_type: PracticeType
   custom_practice_types?: CustomPracticeType[]
   bell_sound?: string
+  teacher_model?: string
   created_at: string
   updated_at: string
 }
