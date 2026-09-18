@@ -576,8 +576,8 @@ export default function TeacherPage() {
                 <span style={{ fontSize: '1.5rem', color: 'var(--accent)' }}>◈</span>
               </div>
               <p style={{ color: 'var(--muted)', marginBottom: '24px', lineHeight: 1.6, fontSize: isMobile ? '0.875rem' : '1rem' }}>
-                I'm here to support your meditation practice. Ask me about shamatha, vipashyana,
-                Mahamudra, Dzogchen, or any challenges you're experiencing.
+                I'm here to support your practice across any Buddhist tradition — breath and insight,
+                compassion practices, Zen, Mahamudra, Dzogchen — or any challenge you're facing.
               </p>
 
               {/* Context Toggle */}

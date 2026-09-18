@@ -45,7 +45,7 @@ export default function Home() {
               <h3 className="text-lg font-medium mb-2">Meditation Timer</h3>
               <p className="text-[var(--muted)] text-sm leading-relaxed">
                 Timed sessions with interval bells and singing bowl sounds.
-                Track shamatha, vipashyana, Mahamudra, or Dzogchen practice.
+                Track any practice — breath, insight, Zen, Mahamudra, Dzogchen, or your own custom types.
               </p>
             </div>
 
