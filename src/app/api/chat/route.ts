@@ -129,15 +129,18 @@ export async function POST(request: NextRequest) {
         .select('*')
         .eq('completed', true)
         .order('started_at', { ascending: false })
-        .limit(15)
+        .limit(10)
 
-      // Get recent journal entries (full content — the teacher must be able to
-      // read a practitioner's entries in their entirety, not a truncated preview)
+      // Get the practitioner's most recent journal entries, in FULL (never
+      // truncated). Deliberately kept to a small number so the teacher works
+      // from a light recent snapshot rather than the whole diary. The complete
+      // history still lives in the database and can be surfaced on demand by a
+      // future retrieval step — see the "teacher voice/style" task.
       const { data: entries } = await db
         .from('journal_entries')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(25)
+        .limit(3)
 
       // Header makes clear this is REAL, COMPLETE data the practitioner recorded,
       // so the teacher never disowns it or claims it fabricated the details.
