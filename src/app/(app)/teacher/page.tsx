@@ -23,7 +23,10 @@ const ZWSP = '​'
 const LIBRARY_START = 'dharma:library:start'
 const LIBRARY_END = 'dharma:library:end'
 const STREAM_ERROR = 'dharma:error'
-const STREAM_MARKERS = [LIBRARY_START, LIBRARY_END, STREAM_ERROR]
+// Sent once as the final bytes of a successful answer (only when stream_markers is
+// on). If a stream ends with neither this nor STREAM_ERROR, it was cut off.
+const STREAM_DONE = 'dharma:done'
+const STREAM_MARKERS = [LIBRARY_START, LIBRARY_END, STREAM_ERROR, STREAM_DONE]
 const isMarkerPrefix = (s: string) => s.length > 0 && STREAM_MARKERS.some(m => m.startsWith(s))
 const stripZwsp = (s: string) => s.split(ZWSP).join('')
 
@@ -128,6 +131,7 @@ export default function TeacherPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [consulting, setConsulting] = useState(false)
+  const [truncated, setTruncated] = useState(false)
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [includeContext, setIncludeContext] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -185,6 +189,7 @@ export default function TeacherPage() {
     const conv = await getConversation(id)
     if (conv) {
       setActiveConversationId(id)
+      setTruncated(false)
       // Older turns may have been saved with keepalive characters embedded; strip
       // them on load so they never leak back into a follow-up prompt.
       setMessages(conv.messages.map(m => ({ ...m, content: stripZwsp(m.content) })))
@@ -197,6 +202,7 @@ export default function TeacherPage() {
 
   const handleNewConversation = () => {
     setActiveConversationId(null)
+    setTruncated(false)
     setMessages([])
     // Close sidebar on mobile after action
     if (isMobile) {
@@ -217,32 +223,40 @@ export default function TeacherPage() {
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || loading) return
-
-    const userMessage = input.trim()
-    setInput('')
-    const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }]
-    setMessages(newMessages)
+  // Send `baseMessages` (which must end with the user turn to answer) to the
+  // teacher and stream the reply. Shared by a new question and by Retry.
+  const runCompletion = async (baseMessages: Message[], includeCtx: boolean) => {
+    const userTurn = baseMessages[baseMessages.length - 1]
+    const titleFrom = userTurn ? userTurn.content : ''
+    setTruncated(false)
     setLoading(true)
 
     let accumulated = ''
+
+    const persist = async (finalMessages: Message[]) => {
+      if (activeConversationId) {
+        await updateConversation(activeConversationId, finalMessages)
+      } else {
+        const title = titleFrom.length > 50 ? titleFrom.substring(0, 50) + '...' : titleFrom
+        const newId = await createConversation(title, finalMessages)
+        if (newId) setActiveConversationId(newId)
+      }
+      loadConversations()
+    }
 
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: newMessages,
-          includeContext: includeContext && messages.length === 0,
+          messages: baseMessages,
+          includeContext: includeCtx,
         }),
       })
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({ error: 'something went wrong' }))
-        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: `I apologize, but I encountered an error: ${data.error || 'something went wrong'}. Please try again.` }]
-        setMessages(errorMessages)
+        setMessages([...baseMessages, { role: 'assistant', content: `I apologize, but I encountered an error: ${data.error || 'something went wrong'}. Please try again.` }])
         return
       }
 
@@ -252,6 +266,7 @@ export default function TeacherPage() {
       const decoder = new TextDecoder()
       let assistantAdded = false
       let streamErrored = false
+      let streamDone = false
 
       // Append answer text to the visible assistant message. Only real answer
       // text ever reaches here — keepalives and markers are handled separately —
@@ -262,7 +277,7 @@ export default function TeacherPage() {
         setConsulting(false)
         if (!assistantAdded) {
           assistantAdded = true
-          setMessages([...newMessages, { role: 'assistant', content: accumulated }])
+          setMessages([...baseMessages, { role: 'assistant', content: accumulated }])
         } else {
           setMessages(prev => {
             const updated = [...prev]
@@ -276,6 +291,7 @@ export default function TeacherPage() {
         if (marker === LIBRARY_START) setConsulting(true)
         else if (marker === LIBRARY_END) setConsulting(false)
         else if (marker === STREAM_ERROR) streamErrored = true
+        else if (marker === STREAM_DONE) streamDone = true
       }
 
       // Incremental parser. The stream is answer text with occasional U+200B
@@ -336,52 +352,57 @@ export default function TeacherPage() {
       drain(true)
 
       if (streamErrored) {
-        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: 'I apologize, but something went wrong while I was answering. Please try again.' }]
-        setMessages(errorMessages)
+        setMessages([...baseMessages, { role: 'assistant', content: 'I apologize, but something went wrong while I was answering. Please try again.' }])
         return
       }
 
       if (!accumulated) {
-        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: 'I apologize, but I received an empty response. Please try again.' }]
-        setMessages(errorMessages)
+        // Nothing came back. If the stream didn't signal a clean finish, it was
+        // cut off before anything arrived — offer a retry.
+        setMessages([...baseMessages, { role: 'assistant', content: 'I apologize, but I received an empty response. Please try again.' }])
+        if (!streamDone) setTruncated(true)
         return
       }
 
-      const updatedMessages: Message[] = [...newMessages, { role: 'assistant', content: accumulated }]
-
-      if (activeConversationId) {
-        await updateConversation(activeConversationId, updatedMessages)
-      } else {
-        const title = userMessage.length > 50 ? userMessage.substring(0, 50) + '...' : userMessage
-        const newId = await createConversation(title, updatedMessages)
-        if (newId) {
-          setActiveConversationId(newId)
-        }
-      }
-
-      loadConversations()
-    } catch (error) {
+      // We have answer text. Save it either way, but if the stream never signalled
+      // a clean finish (no dharma:done), it was cut off — flag it so the UI offers
+      // a retry.
+      const finalMessages: Message[] = [...baseMessages, { role: 'assistant', content: accumulated }]
+      if (!streamDone) setTruncated(true)
+      await persist(finalMessages)
+    } catch {
       if (accumulated) {
-        const partialMessages: Message[] = [...newMessages, { role: 'assistant', content: accumulated + '\n\n[Response was interrupted. Please ask again if you need more.]' }]
-        setMessages(partialMessages)
-        try {
-          if (activeConversationId) {
-            await updateConversation(activeConversationId, partialMessages)
-          } else {
-            const title = userMessage.length > 50 ? userMessage.substring(0, 50) + '...' : userMessage
-            const newId = await createConversation(title, partialMessages)
-            if (newId) setActiveConversationId(newId)
-          }
-          loadConversations()
-        } catch {}
+        setMessages([...baseMessages, { role: 'assistant', content: accumulated }])
+        setTruncated(true)
+        try { await persist([...baseMessages, { role: 'assistant', content: accumulated }]) } catch {}
       } else {
-        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: 'I apologize, but I had trouble connecting. Please check your internet connection and try again.' }]
-        setMessages(errorMessages)
+        setMessages([...baseMessages, { role: 'assistant', content: 'I apologize, but I had trouble connecting. Please check your internet connection and try again.' }])
       }
     } finally {
       setLoading(false)
       setConsulting(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || loading) return
+
+    const userMessage = input.trim()
+    setInput('')
+    const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }]
+    setMessages(newMessages)
+    await runCompletion(newMessages, includeContext && messages.length === 0)
+  }
+
+  // Re-run the last user turn after a cut-off reply. Drops the partial answer.
+  const handleRetry = async () => {
+    if (loading) return
+    let base = messages
+    if (base.length && base[base.length - 1].role === 'assistant') base = base.slice(0, -1)
+    if (!base.length || base[base.length - 1].role !== 'user') return
+    setMessages(base)
+    await runCompletion(base, includeContext && base.length === 1)
   }
 
   // Default questions shown while profile loads
@@ -749,6 +770,27 @@ export default function TeacherPage() {
                       <span /><span /><span />
                     </span>
                   </div>
+                </div>
+              )}
+              {truncated && !loading && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <button
+                    onClick={handleRetry}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: isMobile ? '8px 14px' : '10px 16px',
+                      borderRadius: '12px',
+                      border: '1px solid var(--border)',
+                      backgroundColor: 'var(--background)',
+                      color: 'var(--muted)',
+                      cursor: 'pointer',
+                      fontSize: isMobile ? '0.8rem' : '0.875rem',
+                    }}
+                  >
+                    ↻ The reply was cut off — tap to retry
+                  </button>
                 </div>
               )}
               <div ref={messagesEndRef} />
