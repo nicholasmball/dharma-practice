@@ -13,6 +13,20 @@ import {
   PracticeProfile,
 } from './actions'
 
+// The dharma-llm stream can carry zero-width-space (U+200B) keepalives — written
+// during any >8s silence so the connection isn't dropped — and library-status
+// markers (each U+200B-wrapped). We keep keepalives flowing to hold the tunnel
+// open, act on the markers, and make sure no U+200B ever reaches the display or
+// the saved conversation history. See docs/dashboard/dharma-llm.md on the Balla
+// Bot side for the exact contract.
+const ZWSP = '​'
+const LIBRARY_START = 'dharma:library:start'
+const LIBRARY_END = 'dharma:library:end'
+const STREAM_ERROR = 'dharma:error'
+const STREAM_MARKERS = [LIBRARY_START, LIBRARY_END, STREAM_ERROR]
+const isMarkerPrefix = (s: string) => s.length > 0 && STREAM_MARKERS.some(m => m.startsWith(s))
+const stripZwsp = (s: string) => s.split(ZWSP).join('')
+
 // Question pools based on practitioner profile
 const QUESTION_POOLS = {
   newPractitioner: [
@@ -113,6 +127,7 @@ export default function TeacherPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [consulting, setConsulting] = useState(false)
   const [loadingConversations, setLoadingConversations] = useState(true)
   const [includeContext, setIncludeContext] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -170,7 +185,9 @@ export default function TeacherPage() {
     const conv = await getConversation(id)
     if (conv) {
       setActiveConversationId(id)
-      setMessages(conv.messages)
+      // Older turns may have been saved with keepalive characters embedded; strip
+      // them on load so they never leak back into a follow-up prompt.
+      setMessages(conv.messages.map(m => ({ ...m, content: stripZwsp(m.content) })))
       // Close sidebar on mobile after selecting
       if (isMobile) {
         setSidebarOpen(false)
@@ -234,12 +251,15 @@ export default function TeacherPage() {
 
       const decoder = new TextDecoder()
       let assistantAdded = false
+      let streamErrored = false
 
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        accumulated += decoder.decode(value, { stream: true })
-
+      // Append answer text to the visible assistant message. Only real answer
+      // text ever reaches here — keepalives and markers are handled separately —
+      // so nothing needs stripping before we save `accumulated`.
+      const pushAnswer = (text: string) => {
+        if (!text) return
+        accumulated += text
+        setConsulting(false)
         if (!assistantAdded) {
           assistantAdded = true
           setMessages([...newMessages, { role: 'assistant', content: accumulated }])
@@ -252,7 +272,74 @@ export default function TeacherPage() {
         }
       }
 
-      accumulated += decoder.decode()
+      const handleMarker = (marker: string) => {
+        if (marker === LIBRARY_START) setConsulting(true)
+        else if (marker === LIBRARY_END) setConsulting(false)
+        else if (marker === STREAM_ERROR) streamErrored = true
+      }
+
+      // Incremental parser. The stream is answer text with occasional U+200B
+      // keepalives (a lone U+200B) and U+200B-wrapped markers. We emit answer
+      // text as it arrives (so streaming stays live) and only hold back a suffix
+      // that could still turn into a marker/keepalive.
+      let buffer = ''
+      const drain = (finalize: boolean) => {
+        for (;;) {
+          const zi = buffer.indexOf(ZWSP)
+          if (zi === -1) {
+            pushAnswer(buffer)
+            buffer = ''
+            return
+          }
+          if (zi > 0) {
+            pushAnswer(buffer.slice(0, zi))
+            buffer = buffer.slice(zi)
+          }
+          // buffer now starts with a U+200B; find its closing U+200B.
+          const close = buffer.indexOf(ZWSP, 1)
+          if (close === -1) {
+            const rest = buffer.slice(1)
+            if (rest === '' || isMarkerPrefix(rest)) {
+              // Could still become a keepalive or a marker — wait for more.
+              if (finalize) {
+                if (STREAM_MARKERS.includes(rest)) handleMarker(rest)
+                buffer = ''
+              }
+              return
+            }
+            // The leading U+200B was a standalone keepalive; drop it, keep going.
+            buffer = rest
+            continue
+          }
+          const token = buffer.slice(1, close)
+          if (token === '') {
+            // Two U+200B in a row: the first was a keepalive.
+            buffer = buffer.slice(1)
+          } else if (STREAM_MARKERS.includes(token)) {
+            handleMarker(token)
+            buffer = buffer.slice(close + 1)
+          } else {
+            // A U+200B not opening a known marker: treat it as a keepalive.
+            buffer = buffer.slice(1)
+          }
+        }
+      }
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        drain(false)
+      }
+
+      buffer += decoder.decode()
+      drain(true)
+
+      if (streamErrored) {
+        const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: 'I apologize, but something went wrong while I was answering. Please try again.' }]
+        setMessages(errorMessages)
+        return
+      }
 
       if (!accumulated) {
         const errorMessages: Message[] = [...newMessages, { role: 'assistant', content: 'I apologize, but I received an empty response. Please try again.' }]
@@ -293,6 +380,7 @@ export default function TeacherPage() {
       }
     } finally {
       setLoading(false)
+      setConsulting(false)
     }
   }
 
@@ -654,7 +742,7 @@ export default function TeacherPage() {
                     backgroundColor: 'var(--background)',
                     color: 'var(--muted)',
                   }}>
-                    Reflecting...
+                    {consulting ? 'Consulting the library…' : 'Reflecting...'}
                   </div>
                 </div>
               )}

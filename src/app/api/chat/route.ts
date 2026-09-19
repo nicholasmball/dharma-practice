@@ -84,42 +84,6 @@ You can see the practitioner's recent sessions and journal entries. Hold this li
 
 Remember: your role is to point at the moon, not to be worshipped. Help practitioners discover their own innate wisdom — mostly by drawing it out of them.`
 
-// Buddhist books & wiki lookup (Balla Bot's local dharma-wiki service, loopback
-// on the mini). Given the practitioner's question it returns a ready-to-inject
-// block of real, relevant source passages — or an empty string when nothing
-// matches or the service is unavailable. This grounds the teacher's references so
-// they are accurate rather than invented. It must NEVER break the chat: any
-// failure, timeout, or empty result yields '' and the teacher simply answers
-// without it.
-async function fetchWikiBlock(query: string): Promise<string> {
-  const url = process.env.DHARMA_WIKI_URL
-  const token = process.env.DHARMA_WIKI_TOKEN
-  if (!url || !token || !query) return ''
-
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 4000)
-  try {
-    const res = await fetch(`${url}/search`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ query }),
-      signal: controller.signal,
-    })
-    if (!res.ok) return ''
-    const data = (await res.json().catch(() => null)) as { block?: unknown } | null
-    // The service returns '' for off-topic/no-match/degraded — append nothing.
-    return typeof data?.block === 'string' ? data.block : ''
-  } catch (error) {
-    console.error('Wiki lookup failed (non-fatal):', error instanceof Error ? error.message : 'Unknown error')
-    return ''
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     // Verify user is authenticated
@@ -216,14 +180,9 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
     // Balla Bot's Claude Code subscription — no per-message API cost). Move 13.
     const provider = (process.env.LLM_PROVIDER || 'anthropic').toLowerCase()
 
-    // Ground the teacher's references in the practitioner's actual Buddhist books
-    // & wiki: look up passages relevant to their latest question and append them
-    // as a final system block. Empty (and omitted) when nothing matches or the
-    // lookup service is unavailable.
-    const latestUserMessage = [...messages].reverse().find(m => m.role === 'user')?.content ?? ''
-    const wikiBlock = await fetchWikiBlock(latestUserMessage)
-
-    const fullSystem = SYSTEM_PROMPT + contextMessage + (wikiBlock ? `\n\n${wikiBlock}` : '')
+    // The teacher now consults the Buddhist library itself (via read-only tools on
+    // the dharma-llm side), so we no longer pre-search and inject passages here.
+    const fullSystem = SYSTEM_PROMPT + contextMessage
     const chatMessages = messages.map((m: { role: string; content: string }) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,
@@ -267,6 +226,10 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
                   system: fullSystem,
                   messages: chatMessages,
                   max_tokens: MAX_TOKENS,
+                  // Opt in to keepalive/library-status markers on the stream so the
+                  // UI can keep the connection alive and show "consulting the
+                  // library…" during a lookup. The browser strips these out.
+                  stream_markers: true,
                   ...(teacherModel ? { model: teacherModel } : {}),
                 }),
               })
