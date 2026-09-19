@@ -741,8 +741,13 @@ export default function TeacherPage() {
                     borderRadius: '16px 16px 16px 4px',
                     backgroundColor: 'var(--background)',
                     color: 'var(--muted)',
+                    display: 'flex',
+                    alignItems: 'center',
                   }}>
-                    {consulting ? 'Consulting the library…' : 'Reflecting...'}
+                    {consulting ? 'Consulting the library' : 'Reflecting'}
+                    <span className="thinking-dots" aria-hidden="true">
+                      <span /><span /><span />
+                    </span>
                   </div>
                 </div>
               )}
