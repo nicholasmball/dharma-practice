@@ -139,6 +139,7 @@ export default function TeacherPage() {
   const [isMobile, setIsMobile] = useState(false)
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // Detect mobile screen size
   useEffect(() => {
@@ -184,6 +185,19 @@ export default function TeacherPage() {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Grow the question box as the user types, up to a max height then scroll
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    const maxHeight = isMobile ? 120 : 200
+    // scrollHeight excludes borders, which count under border-box sizing
+    const borders = el.offsetHeight - el.clientHeight
+    const wanted = el.scrollHeight + borders
+    el.style.height = `${Math.min(wanted, maxHeight)}px`
+    el.style.overflowY = wanted > maxHeight ? 'auto' : 'hidden'
+  }, [input, isMobile])
 
   const handleSelectConversation = async (id: string) => {
     const conv = await getConversation(id)
@@ -760,11 +774,18 @@ export default function TeacherPage() {
         </div>
 
         {/* Input Area */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px' }}>
-          <input
-            type="text"
+        <form onSubmit={handleSubmit} style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+          <textarea
+            ref={inputRef}
+            rows={1}
             value={input}
             onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSubmit(e)
+              }
+            }}
             placeholder={isMobile ? "Ask a question..." : "Ask a question about your practice..."}
             disabled={loading}
             style={{
@@ -776,6 +797,10 @@ export default function TeacherPage() {
               color: 'var(--foreground)',
               outline: 'none',
               fontSize: isMobile ? '0.875rem' : '1rem',
+              fontFamily: 'inherit',
+              lineHeight: 1.5,
+              resize: 'none',
+              overflowY: 'hidden',
             }}
           />
           <button
