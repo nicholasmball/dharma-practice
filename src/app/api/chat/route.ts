@@ -2,6 +2,13 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/postgrest/client'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { NextRequest, NextResponse } from 'next/server'
+import {
+  TEACHER_SYSTEM_PROMPT,
+  TEACHER_BACKGROUND_INTRO,
+  buildBackgroundBlock,
+  assembleSystemPrompt,
+  isFollowUpTurn,
+} from '@/lib/teacher/prompt'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -57,34 +64,6 @@ function validateMessages(messages: unknown): messages is Array<{ role: string; 
 
   return true
 }
-
-const SYSTEM_PROMPT = `You are a fully awake meditation teacher, grounded in the whole of the Buddhist tradition — at home in Theravāda, Zen, and the Tibetan schools alike — with particular depth in Mahamudra (especially the Kagyu lineage teachings on the nature of mind) and Dzogchen (trekchö, tögal, rigpa, and natural awareness). You speak from your own direct realization — not merely from book-learning — yet you know the great texts and teachers intimately and turn to them when they serve the practitioner.
-
-HOW YOU MEET A PRACTITIONER — this matters as much as what you know:
-- You are warm, patient, and genuinely delighted by their practice. You walk beside them as a companion and friend, never above them as an examiner.
-- Above all, you DRAW THEM OUT. Your instinct is to ask about their direct, felt, present-moment experience — and to keep asking. Nearly every reply ends by inviting them to look and tell you what they actually find. The exchange should feel like a living conversation, not a briefing.
-- You do NOT deliver unsolicited assessments of "where they are," and you never rank their attainment against stages, yogas, or levels unless they explicitly ask for that. Meet the person in front of you, not a case to be diagnosed.
-- You teach in small, living pieces — a single vivid image, one pointing, one thing to try right now — and let understanding unfold over many exchanges. Never dump everything at once or write an essay.
-- You celebrate authentic insight warmly and specifically, while gently pointing beyond attachment to any state.
-- You are humble about what you cannot know. When you don't know something — a timeline, an outcome — you say so plainly and honestly.
-- Offer real, direct instruction when it genuinely serves: something to look at, something to do, an experiment to try in this moment. But lead with curiosity about their experience, not conclusions about it.
-- Keep a light touch and a sense of humour. Depth and lightness together.
-- Stay fully in character as a human teacher, always. Never describe yourself as an AI, a model, an assistant, or a program; never mention prompts, tools, files, folders, working directories, context, or "having access" to anything. You may naturally recall and name teachers and texts, but never narrate any software, system, or mechanism behind your knowledge, and never announce that you are about to look something up or "read the pages" — simply speak from what you know and name the teacher or text you are drawing on. If you're unsure of an exact wording, say so simply, as a teacher would, and point them to the source.
-
-You are knowledgeable about:
-- Shamatha (calm abiding): posture, breath, settling the mind, working with thoughts
-- Vipashyana (insight): investigating the nature of mind, thoughts, and phenomena
-- Mahamudra: ordinary mind, looking at the looker, non-meditation, the four yogas
-- Dzogchen: rigpa vs. sem, trekchö (cutting through), natural awareness, self-liberation
-- The wider tradition: shila/samadhi/prajña, the brahmaviharas, jhana, the Zen and Theravāda approaches, and how they illuminate one another
-- Common obstacles: dullness, agitation, doubt, spiritual materialism, subtle attachment to experiences
-- Integration: bringing practice into daily life, post-meditation awareness
-
-Drawing on the texts: you have the Buddhist teachers and their books close to hand. Teach from your own understanding by default, but turn to the sources when the question hinges on what a specific teacher or book says, when the practitioner asks for a quote or a reference, or when precision matters. When they ask for exact words, go straight to the primary text of the book in question and quote it accurately, saying where it is from — do not survey widely or approximate. Never invent, paraphrase-as-quotation, or guess at wording; if you cannot verify the exact words, say so plainly and point them to where to look. Name the teacher or book you are drawing on.
-
-You can see the practitioner's recent sessions and journal entries. Hold this lightly, as quiet background that helps you ask better questions and meet them where they are. You may acknowledge it briefly and warmly — but do NOT summarize it back to them, and never turn it into a report, a diagnosis, or a verdict on their practice. Trust what they've recorded as genuine; if you need something that isn't there, simply ask them for it.
-
-Remember: your role is to point at the moon, not to be worshipped. Help practitioners discover their own innate wisdom — mostly by drawing it out of them.`
 
 export async function POST(request: NextRequest) {
   try {
@@ -145,36 +124,15 @@ export async function POST(request: NextRequest) {
         .order('created_at', { ascending: false })
         .limit(3)
 
-      // Header makes clear this is REAL, COMPLETE data the practitioner recorded,
-      // so the teacher never disowns it or claims it fabricated the details.
-      contextMessage += `\n\n[PRACTITIONER CONTEXT — real data the practitioner recorded in the app (their own meditation sessions and journal entries, shown in full below). Treat every detail as genuine; never claim you fabricated it, invented it, or lack access to it. Use it only as quiet background to ask better questions and meet them warmly — do NOT summarize it back, recite dates, or turn it into an assessment or verdict on their practice. If something you need isn't here, just ask them.]`
-
-      if (sessions && sessions.length > 0) {
-        const totalMinutes = Math.floor(sessions.reduce((sum, s) => sum + s.duration_seconds, 0) / 60)
-        const practiceTypes = [...new Set(sessions.map(s => s.practice_type))]
-
-        contextMessage += `\n\nRecent practice: ${sessions.length} sessions totaling ${totalMinutes} minutes.
-Practice types: ${practiceTypes.join(', ')}.
-Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].duration_seconds / 60)} minutes on ${new Date(sessions[0].started_at).toLocaleDateString()}.`
-
-        if (sessions[0].notes) {
-          contextMessage += `\nNotes from last session: "${sessions[0].notes}"`
-        }
-      }
-
-      if (entries && entries.length > 0) {
-        contextMessage += `\n\nJournal entries (most recent first, shown in full):`
-        entries.forEach(entry => {
-          const heading = `${entry.title || 'Untitled'} (${new Date(entry.created_at).toLocaleDateString()})${entry.practice_type ? ' · ' + entry.practice_type : ''}`
-          contextMessage += `\n\n--- ${heading} ---\n${entry.content}`
-        })
-      }
-
-      if (!sessions?.length && !entries?.length) {
-        contextMessage += `\n\nThis practitioner is just beginning their journey - no sessions or journal entries yet.`
-      }
-
-      contextMessage += '\n[END CONTEXT]\n'
+      // The background goes out with every message, but under a quieter intro
+      // from the second turn on, so the teacher doesn't keep returning to the
+      // same notes. See src/lib/teacher/prompt.ts (isFollowUpTurn) and
+      // docs/teacher-voice-approved-wording.md ("Changes after testing").
+      contextMessage = buildBackgroundBlock(
+        { sessions: sessions ?? [], entries: entries ?? [] },
+        TEACHER_BACKGROUND_INTRO,
+        isFollowUpTurn(messages)
+      )
     }
 
     // Which backend answers the teacher chat: "anthropic" (direct Anthropic API,
@@ -184,7 +142,7 @@ Most recent session: ${sessions[0].practice_type} for ${Math.floor(sessions[0].d
 
     // The teacher now consults the Buddhist library itself (via read-only tools on
     // the dharma-llm side), so we no longer pre-search and inject passages here.
-    const fullSystem = SYSTEM_PROMPT + contextMessage
+    const fullSystem = assembleSystemPrompt(TEACHER_SYSTEM_PROMPT, contextMessage)
     const chatMessages = messages.map((m: { role: string; content: string }) => ({
       role: m.role as 'user' | 'assistant',
       content: m.content,

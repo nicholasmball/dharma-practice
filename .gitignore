@@ -45,3 +45,6 @@ next-env.d.ts
 public/sw.js
 public/workbox-*.js
 migration-capture/
+
+# teacher-voice test runner output (may include full model replies; never committed)
+/teacher-voice-output/

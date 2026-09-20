@@ -12,23 +12,23 @@ import {
   Message,
   PracticeProfile,
 } from './actions'
+import {
+  createMarkerStreamParser,
+  stripZwsp,
+  LIBRARY_START,
+  LIBRARY_END,
+  STREAM_ERROR,
+  STREAM_DONE,
+} from '@/lib/teacher/stream-markers'
 
 // The dharma-llm stream can carry zero-width-space (U+200B) keepalives — written
 // during any >8s silence so the connection isn't dropped — and library-status
 // markers (each U+200B-wrapped). We keep keepalives flowing to hold the tunnel
 // open, act on the markers, and make sure no U+200B ever reaches the display or
 // the saved conversation history. See docs/dashboard/dharma-llm.md on the Balla
-// Bot side for the exact contract.
-const ZWSP = '​'
-const LIBRARY_START = 'dharma:library:start'
-const LIBRARY_END = 'dharma:library:end'
-const STREAM_ERROR = 'dharma:error'
-// Sent once as the final bytes of a successful answer (only when stream_markers is
-// on). If a stream ends with neither this nor STREAM_ERROR, it was cut off.
-const STREAM_DONE = 'dharma:done'
-const STREAM_MARKERS = [LIBRARY_START, LIBRARY_END, STREAM_ERROR, STREAM_DONE]
-const isMarkerPrefix = (s: string) => s.length > 0 && STREAM_MARKERS.some(m => m.startsWith(s))
-const stripZwsp = (s: string) => s.split(ZWSP).join('')
+// Bot side for the exact contract. The actual parsing (including a marker split
+// across two stream chunks) lives in src/lib/teacher/stream-markers.ts, shared
+// with the offline teacher-voice test runner so both parse it identically.
 
 // Question pools based on practitioner profile
 const QUESTION_POOLS = {
@@ -294,62 +294,19 @@ export default function TeacherPage() {
         else if (marker === STREAM_DONE) streamDone = true
       }
 
-      // Incremental parser. The stream is answer text with occasional U+200B
-      // keepalives (a lone U+200B) and U+200B-wrapped markers. We emit answer
-      // text as it arrives (so streaming stays live) and only hold back a suffix
-      // that could still turn into a marker/keepalive.
-      let buffer = ''
-      const drain = (finalize: boolean) => {
-        for (;;) {
-          const zi = buffer.indexOf(ZWSP)
-          if (zi === -1) {
-            pushAnswer(buffer)
-            buffer = ''
-            return
-          }
-          if (zi > 0) {
-            pushAnswer(buffer.slice(0, zi))
-            buffer = buffer.slice(zi)
-          }
-          // buffer now starts with a U+200B; find its closing U+200B.
-          const close = buffer.indexOf(ZWSP, 1)
-          if (close === -1) {
-            const rest = buffer.slice(1)
-            if (rest === '' || isMarkerPrefix(rest)) {
-              // Could still become a keepalive or a marker — wait for more.
-              if (finalize) {
-                if (STREAM_MARKERS.includes(rest)) handleMarker(rest)
-                buffer = ''
-              }
-              return
-            }
-            // The leading U+200B was a standalone keepalive; drop it, keep going.
-            buffer = rest
-            continue
-          }
-          const token = buffer.slice(1, close)
-          if (token === '') {
-            // Two U+200B in a row: the first was a keepalive.
-            buffer = buffer.slice(1)
-          } else if (STREAM_MARKERS.includes(token)) {
-            handleMarker(token)
-            buffer = buffer.slice(close + 1)
-          } else {
-            // A U+200B not opening a known marker: treat it as a keepalive.
-            buffer = buffer.slice(1)
-          }
-        }
-      }
+      // Incremental parsing (including a marker split across two stream
+      // chunks) lives in src/lib/teacher/stream-markers.ts, shared with the
+      // offline teacher-voice test runner.
+      const markerParser = createMarkerStreamParser({ onText: pushAnswer, onMarker: handleMarker })
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        drain(false)
+        markerParser.push(decoder.decode(value, { stream: true }))
       }
 
-      buffer += decoder.decode()
-      drain(true)
+      markerParser.push(decoder.decode())
+      markerParser.finalize()
 
       if (streamErrored) {
         setMessages([...baseMessages, { role: 'assistant', content: 'I apologize, but something went wrong while I was answering. Please try again.' }])
@@ -392,7 +349,11 @@ export default function TeacherPage() {
     setInput('')
     const newMessages: Message[] = [...messages, { role: 'user', content: userMessage }]
     setMessages(newMessages)
-    await runCompletion(newMessages, includeContext && messages.length === 0)
+    // The practitioner's background (recent sits + journal) is sent with
+    // every message of a conversation, not just the first, so the teacher
+    // can draw on it — and mention it lightly — at any point, per the
+    // approved teacher-voice wording.
+    await runCompletion(newMessages, includeContext)
   }
 
   // Re-run the last user turn after a cut-off reply. Drops the partial answer.
@@ -402,7 +363,7 @@ export default function TeacherPage() {
     if (base.length && base[base.length - 1].role === 'assistant') base = base.slice(0, -1)
     if (!base.length || base[base.length - 1].role !== 'user') return
     setMessages(base)
-    await runCompletion(base, includeContext && base.length === 1)
+    await runCompletion(base, includeContext)
   }
 
   // Default questions shown while profile loads
