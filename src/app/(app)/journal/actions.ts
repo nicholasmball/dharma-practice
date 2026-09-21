@@ -13,13 +13,13 @@ export async function createJournalEntry(data: {
   practice_type?: PracticeType
 }) {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return { error: 'Not authenticated' }
   }
 
-  const { error } = await supabase.from('journal_entries').insert({
+  const { error } = await db.from('journal_entries').insert({
     user_id: user.id,
     title: data.title || null,
     content: data.content,
@@ -42,13 +42,13 @@ export async function updateJournalEntry(id: string, data: {
   practice_type?: PracticeType
 }) {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return { error: 'Not authenticated' }
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from('journal_entries')
     .update({
       title: data.title || null,
@@ -70,13 +70,13 @@ export async function updateJournalEntry(id: string, data: {
 
 export async function deleteJournalEntry(id: string) {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return { error: 'Not authenticated' }
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from('journal_entries')
     .delete()
     .eq('id', id)

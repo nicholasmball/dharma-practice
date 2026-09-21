@@ -19,10 +19,10 @@ export interface Conversation {
 
 export async function getConversations(): Promise<Conversation[]> {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
   if (!user) return []
 
-  const { data } = await supabase
+  const { data } = await db
     .from('teacher_conversations')
     .select('*')
     .eq('user_id', user.id)
@@ -33,10 +33,10 @@ export async function getConversations(): Promise<Conversation[]> {
 
 export async function getConversation(id: string): Promise<Conversation | null> {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
   if (!user) return null
 
-  const { data } = await supabase
+  const { data } = await db
     .from('teacher_conversations')
     .select('*')
     .eq('id', id)
@@ -48,10 +48,10 @@ export async function getConversation(id: string): Promise<Conversation | null> 
 
 export async function createConversation(title: string, messages: Message[]): Promise<string | null> {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
   if (!user) return null
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('teacher_conversations')
     .insert({
       user_id: user.id,
@@ -72,7 +72,7 @@ export async function createConversation(title: string, messages: Message[]): Pr
 
 export async function updateConversation(id: string, messages: Message[], title?: string): Promise<boolean> {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
   if (!user) return false
 
   const updateData: { messages: Message[]; updated_at: string; title?: string } = {
@@ -84,7 +84,7 @@ export async function updateConversation(id: string, messages: Message[], title?
     updateData.title = title
   }
 
-  const { error } = await supabase
+  const { error } = await db
     .from('teacher_conversations')
     .update(updateData)
     .eq('id', id)
@@ -101,10 +101,10 @@ export async function updateConversation(id: string, messages: Message[], title?
 
 export async function deleteConversation(id: string): Promise<boolean> {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
   if (!user) return false
 
-  const { error } = await supabase
+  const { error } = await db
     .from('teacher_conversations')
     .delete()
     .eq('id', id)
@@ -128,12 +128,12 @@ export interface PracticeProfile {
 
 export async function getPracticeProfile(): Promise<PracticeProfile> {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
   if (!user) {
     return { sessionCount: 0, dominantPracticeType: null, daysSinceLastSession: null, currentStreak: 0 }
   }
 
-  const { data: sessions } = await supabase
+  const { data: sessions } = await db
     .from('meditation_sessions')
     .select('practice_type, started_at, ended_at')
     .eq('user_id', user.id)

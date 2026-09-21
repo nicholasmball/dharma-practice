@@ -31,12 +31,12 @@ describe('createClient', () => {
     mintPostgrestTokenMock.mockResolvedValue('signed.jwt.token')
 
     const { createClient } = await import('../client')
-    const supabase = await createClient()
+    const db = await createClient()
 
     expect(mintPostgrestTokenMock).toHaveBeenCalledWith(TEST_USER.id)
 
     // Same query-builder shape existing call sites already use.
-    const query = supabase.from('journal_entries').select('*').eq('user_id', TEST_USER.id)
+    const query = db.from('journal_entries').select('*').eq('user_id', TEST_USER.id)
     const headers = (query as unknown as { headers: Headers }).headers
 
     expect(headers.get('Authorization')).toBe('Bearer signed.jwt.token')
@@ -46,11 +46,11 @@ describe('createClient', () => {
     getCurrentUserMock.mockResolvedValue(null)
 
     const { createClient } = await import('../client')
-    const supabase = await createClient()
+    const db = await createClient()
 
     expect(mintPostgrestTokenMock).not.toHaveBeenCalled()
 
-    const query = supabase.from('journal_entries').select('*')
+    const query = db.from('journal_entries').select('*')
     const headers = (query as unknown as { headers: Headers }).headers
 
     expect(headers.get('Authorization')).toBeNull()

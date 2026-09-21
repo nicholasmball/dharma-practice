@@ -10,18 +10,18 @@ export default async function JournalPage({
   searchParams: Promise<{ search?: string; tag?: string; type?: string }>
 }) {
   const params = await searchParams
-  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()])
+  const [user, db] = await Promise.all([getCurrentUser(), createClient()])
 
   // Run the entries and settings queries in parallel
   const [
     { data: entries },
     { data: settings },
   ] = await Promise.all([
-    supabase
+    db
       .from('journal_entries')
       .select('*')
       .order('created_at', { ascending: false }),
-    supabase
+    db
       .from('user_settings')
       .select('custom_practice_types')
       .eq('user_id', user?.id)

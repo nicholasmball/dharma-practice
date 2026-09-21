@@ -15,8 +15,8 @@ export async function GET() {
     return NextResponse.json({ settings: null }, { status: 401 })
   }
 
-  const supabase = await createClient()
-  const { data: settings } = await supabase
+  const db = await createClient()
+  const { data: settings } = await db
     .from('user_settings')
     .select('meditation_reminder_enabled, meditation_reminder_time, journal_reminder_enabled, journal_reminder_time')
     .eq('user_id', user.id)

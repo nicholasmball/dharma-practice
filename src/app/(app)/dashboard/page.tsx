@@ -2,7 +2,7 @@ import { createClient } from '@/lib/postgrest/client'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
+  const db = await createClient()
 
   // Run all independent queries in parallel (RLS on the mini scopes each
   // one to the signed-in user via the client's token, so there's no
@@ -12,15 +12,15 @@ export default async function DashboardPage() {
     { count: journalCount },
     { count: conversationCount },
   ] = await Promise.all([
-    supabase
+    db
       .from('meditation_sessions')
       .select('*')
       .eq('completed', true)
       .order('started_at', { ascending: false }),
-    supabase
+    db
       .from('journal_entries')
       .select('*', { count: 'exact', head: true }),
-    supabase
+    db
       .from('teacher_conversations')
       .select('*', { count: 'exact', head: true }),
   ])

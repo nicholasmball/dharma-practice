@@ -4,9 +4,9 @@ import { CustomPracticeType } from '@/lib/types'
 import JournalForm from '../JournalForm'
 
 export default async function NewJournalEntryPage() {
-  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()])
+  const [user, db] = await Promise.all([getCurrentUser(), createClient()])
 
-  const { data: settings } = await supabase
+  const { data: settings } = await db
     .from('user_settings')
     .select('custom_practice_types')
     .eq('user_id', user?.id)

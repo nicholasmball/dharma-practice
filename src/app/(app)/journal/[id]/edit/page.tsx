@@ -10,9 +10,9 @@ export default async function EditJournalEntryPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()])
+  const [user, db] = await Promise.all([getCurrentUser(), createClient()])
 
-  const { data: entry } = await supabase
+  const { data: entry } = await db
     .from('journal_entries')
     .select('*')
     .eq('id', id)
@@ -22,7 +22,7 @@ export default async function EditJournalEntryPage({
     notFound()
   }
 
-  const { data: settings } = await supabase
+  const { data: settings } = await db
     .from('user_settings')
     .select('custom_practice_types')
     .eq('user_id', user?.id)

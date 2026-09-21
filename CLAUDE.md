@@ -59,7 +59,7 @@ A Buddhist meditation practice app built with Next.js, self-hosted on a Mac mini
 - **AI:** Claude, reached via Balla Bot's local `dharma-llm` service (`LLM_PROVIDER=ballabot`); direct Anthropic API kept as a fallback
 - **PWA:** next-pwa (offline support, installable)
 - **Hosting:** **Mac mini** — Next.js via launchd (`com.dharma.web`), served through a **Cloudflare tunnel + Access**. *(was: Vercel)*
-- **Domain:** `dharma.balla-bot.uk` (Cloudflare-managed). *(old `buddha-balla.com` was on Namecheap → Vercel, now retired)*
+- **Domain:** `dharma.balla-bot.uk` (Cloudflare-managed). *(old `buddha-balla.com`: website switched off, but the domain is **still registered at Namecheap and still used to send email** — see below)*
 
 ## Project Structure
 
@@ -522,13 +522,18 @@ sign-in plus the `AUTH_ALLOWED_EMAILS` allowlist. Cloudflare is also the DNS reg
 **Google Cloud (OAuth):** the client ID/secret behind Google sign-in. The authorised
 redirect URI must match `AUTH_URL` (`https://dharma.balla-bot.uk`).
 
-**Resend:** SMTP for transactional email; still sends from `buddha-balla.com`.
+**Resend:** SMTP for transactional email; still sends from `buddha-balla.com`. The feedback
+form's sender (`feedback@buddha-balla.com`) is hard-coded in `src/app/api/feedback/route.ts`.
+**Do not let `buddha-balla.com` lapse or remove its DNS records until email has moved to
+another verified domain** — Resend only sends from a verified domain, so feedback email would
+silently stop.
 
 **Anthropic:** the teacher reaches Claude via Balla Bot's `dharma-llm` service
 (`LLM_PROVIDER=ballabot`). `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` remains as a
 fallback path in the code.
 
-*Retired: Vercel, Supabase, Namecheap, and the `buddha-balla.com` domain (Mini move 11).*
+*Retired: Vercel, Supabase, and the `buddha-balla.com` website (Mini move 11). The
+`buddha-balla.com` domain itself is still registered at Namecheap because email sends from it.*
 
 ## Database Changes
 
@@ -663,4 +668,5 @@ hours — which is how an unmounted NAS gets noticed.
 - **Domain:** `balla-bot.uk`, ~$12/year
 - **Google Play:** $25 one-time developer fee
 
-*No longer paying for / using: Vercel, Supabase, Namecheap.*
+*No longer paying for / using: Vercel, Supabase. Still paying Namecheap for `buddha-balla.com`
+(~£10/yr) while email sends from it.*

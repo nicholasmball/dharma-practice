@@ -9,13 +9,13 @@ import { CustomPracticeType } from '@/lib/types'
 
 export async function getCustomPracticeTypes(): Promise<CustomPracticeType[]> {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return []
   }
 
-  const { data: settings } = await supabase
+  const { data: settings } = await db
     .from('user_settings')
     .select('custom_practice_types')
     .eq('user_id', user.id)
@@ -26,21 +26,21 @@ export async function getCustomPracticeTypes(): Promise<CustomPracticeType[]> {
 
 export async function saveCustomPracticeTypes(customTypes: CustomPracticeType[]) {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return { error: 'Not authenticated' }
   }
 
   // Check if settings exist
-  const { data: existing } = await supabase
+  const { data: existing } = await db
     .from('user_settings')
     .select('id')
     .eq('user_id', user.id)
     .single()
 
   if (existing) {
-    const { error } = await supabase
+    const { error } = await db
       .from('user_settings')
       .update({
         custom_practice_types: customTypes,
@@ -50,7 +50,7 @@ export async function saveCustomPracticeTypes(customTypes: CustomPracticeType[])
 
     if (error) return { error: error.message }
   } else {
-    const { error } = await supabase
+    const { error } = await db
       .from('user_settings')
       .insert({
         user_id: user.id,
@@ -77,21 +77,21 @@ export async function updateSettings(data: {
   teacher_model: string | null
 }) {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return { error: 'Not authenticated' }
   }
 
   // Check if settings exist
-  const { data: existing } = await supabase
+  const { data: existing } = await db
     .from('user_settings')
     .select('id')
     .eq('user_id', user.id)
     .single()
 
   if (existing) {
-    const { error } = await supabase
+    const { error } = await db
       .from('user_settings')
       .update({
         ...data,
@@ -101,7 +101,7 @@ export async function updateSettings(data: {
 
     if (error) return { error: error.message }
   } else {
-    const { error } = await supabase
+    const { error } = await db
       .from('user_settings')
       .insert({
         user_id: user.id,
@@ -117,26 +117,26 @@ export async function updateSettings(data: {
 
 export async function exportUserData() {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return { error: 'Not authenticated' }
   }
 
   // Get all user data
-  const { data: sessions } = await supabase
+  const { data: sessions } = await db
     .from('meditation_sessions')
     .select('*')
     .eq('user_id', user.id)
     .order('started_at', { ascending: false })
 
-  const { data: entries } = await supabase
+  const { data: entries } = await db
     .from('journal_entries')
     .select('*')
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
-  const { data: settings } = await supabase
+  const { data: settings } = await db
     .from('user_settings')
     .select('*')
     .eq('user_id', user.id)
@@ -155,14 +155,14 @@ export async function exportUserData() {
 
 export async function deleteAccount() {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return { error: 'Not authenticated' }
   }
 
   // Delete all user data from each table
-  const { error: sessionsError } = await supabase
+  const { error: sessionsError } = await db
     .from('meditation_sessions')
     .delete()
     .eq('user_id', user.id)
@@ -171,7 +171,7 @@ export async function deleteAccount() {
     return { error: 'Failed to delete meditation sessions: ' + sessionsError.message }
   }
 
-  const { error: entriesError } = await supabase
+  const { error: entriesError } = await db
     .from('journal_entries')
     .delete()
     .eq('user_id', user.id)
@@ -180,7 +180,7 @@ export async function deleteAccount() {
     return { error: 'Failed to delete journal entries: ' + entriesError.message }
   }
 
-  const { error: conversationsError } = await supabase
+  const { error: conversationsError } = await db
     .from('teacher_conversations')
     .delete()
     .eq('user_id', user.id)
@@ -189,7 +189,7 @@ export async function deleteAccount() {
     return { error: 'Failed to delete conversations: ' + conversationsError.message }
   }
 
-  const { error: settingsError } = await supabase
+  const { error: settingsError } = await db
     .from('user_settings')
     .delete()
     .eq('user_id', user.id)

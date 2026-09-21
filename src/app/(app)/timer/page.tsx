@@ -4,9 +4,9 @@ import TimerClient from './TimerClient'
 import { CustomPracticeType } from '@/lib/types'
 
 export default async function TimerPage() {
-  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()])
+  const [user, db] = await Promise.all([getCurrentUser(), createClient()])
 
-  const { data: settings } = await supabase
+  const { data: settings } = await db
     .from('user_settings')
     .select('default_session_duration, default_practice_type, custom_practice_types, bell_sound')
     .eq('user_id', user?.id)

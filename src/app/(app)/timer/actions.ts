@@ -11,7 +11,7 @@ export async function saveSession(data: {
   notes?: string
 }) {
   const user = await getCurrentUser()
-  const supabase = await createClient()
+  const db = await createClient()
 
   if (!user) {
     return { error: 'Not authenticated' }
@@ -21,7 +21,7 @@ export async function saveSession(data: {
   const startedAt = new Date(Date.now() - data.duration_seconds * 1000).toISOString()
 
   // Save the meditation session
-  const { error } = await supabase.from('meditation_sessions').insert({
+  const { error } = await db.from('meditation_sessions').insert({
     user_id: user.id,
     started_at: startedAt,
     ended_at: now.toISOString(),
@@ -51,7 +51,7 @@ export async function saveSession(data: {
       practiceTypeName = practiceTypeLabels[data.practice_type as BuiltInPracticeType].split(' (')[0]
     } else {
       // Custom type: fetch from settings to get proper capitalization
-      const { data: settings } = await supabase
+      const { data: settings } = await db
         .from('user_settings')
         .select('custom_practice_types')
         .eq('user_id', user.id)
@@ -64,7 +64,7 @@ export async function saveSession(data: {
 
     const title = `${practiceTypeName} - ${dateStr} - ${durationMinutes} min`
 
-    await supabase.from('journal_entries').insert({
+    await db.from('journal_entries').insert({
       user_id: user.id,
       title: title,
       content: data.notes.trim(),

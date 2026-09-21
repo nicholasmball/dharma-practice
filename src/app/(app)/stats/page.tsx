@@ -3,9 +3,9 @@ import { MeditationSession, practiceTypeLabels, PracticeType, BADGES, getEarnedB
 import StatsCharts from './StatsCharts'
 
 export default async function StatsPage() {
-  const supabase = await createClient()
+  const db = await createClient()
 
-  const { data: sessions } = await supabase
+  const { data: sessions } = await db
     .from('meditation_sessions')
     .select('*')
     .eq('completed', true)

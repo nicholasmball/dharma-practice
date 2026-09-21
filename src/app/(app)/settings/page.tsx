@@ -3,9 +3,9 @@ import { getCurrentUser } from '@/lib/auth/get-current-user'
 import SettingsForm from './SettingsForm'
 
 export default async function SettingsPage() {
-  const [user, supabase] = await Promise.all([getCurrentUser(), createClient()])
+  const [user, db] = await Promise.all([getCurrentUser(), createClient()])
 
-  const { data: settings } = await supabase
+  const { data: settings } = await db
     .from('user_settings')
     .select('*')
     .eq('user_id', user?.id)
