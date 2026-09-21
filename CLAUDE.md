@@ -404,8 +404,19 @@ do alone: edit code, `npm run lint`, `npm test`, `npm run build`, and check stat
 **Reaching the mini from the laptop:** `ssh mini` (home network) or `ssh mini-ts` (from
 anywhere, via Tailscale) — both are set up in the laptop's `~/.ssh/config`, key-based, no
 password. The repo on the mini is `~/projects/dharma-practice`. Anything that must run on
-the mini can be done over SSH from a laptop session, e.g.
-`ssh mini 'cd ~/projects/dharma-practice && scripts/mini/install.sh --status'`.
+the mini can be done over SSH from a laptop session — **but wrap it in a login shell**:
+
+```bash
+ssh mini 'cd ~/projects/dharma-practice && zsh -lc "scripts/mini/deploy.sh"'
+```
+
+A plain `ssh mini '<cmd>'` shell doesn't load the login profile, so `npm`/`node`
+(Homebrew, `/opt/homebrew/bin`) aren't on PATH. `deploy.sh` run that way dies at `npm ci`
+*after* fast-forwarding and leaves `~/Library/Logs/dharma/.deploy.lock` behind (seen 21 Sep
+2026). Then the timer stands down on the lock, and once the lock clears it sees "up to date"
+and never rebuilds. If that happens: check nothing is running (`pgrep -f deploy.sh`),
+`rmdir` the lock, and run the build steps by hand in a login shell. launchd already uses
+`zsh -lc`, so scheduled runs are unaffected.
 
 **Worktrees don't share installed packages.** A fresh `.claude/worktrees/…` copy has no
 `node_modules`; run `npm ci` in it before `npm run build` or `npm test`.
