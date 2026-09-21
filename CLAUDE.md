@@ -42,6 +42,10 @@ A Buddhist meditation practice app built with Next.js, self-hosted on a Mac mini
   a laptop cannot run this app alone (see Development), so "test it locally first" no longer
   means what it used to: testing that touches data, sign-in or the teacher has to happen on
   the mini. Agree with him how a change will be checked before you push it.
+- **A change isn't live until it's on `main` on GitHub.** Sessions often run in a
+  `.claude/worktrees/…` copy on their own branch — a commit there reaches nobody until it's
+  pushed to `main`. When he says "get it live", that means `git push origin main` (after the
+  checks in Development), then confirm the mini picked it up (Deployment).
 - He understands concepts well when explained, but don't assume prior knowledge of modern dev tooling
 
 ## Tech Stack
@@ -63,10 +67,10 @@ A Buddhist meditation practice app built with Next.js, self-hosted on a Mac mini
 src/
 ├── app/
 │   ├── (auth)/              # Public auth pages
-│   │   ├── login/
-│   │   ├── signup/          # Shows email confirmation message
-│   │   ├── forgot-password/ # Request password reset email
-│   │   ├── reset-password/  # Set new password (from email link)
+│   │   ├── login/           # Google sign-in
+│   │   ├── signup/          # Historical — email/password retired in the mini migration
+│   │   ├── forgot-password/ # Historical
+│   │   ├── reset-password/  # Historical
 │   │   └── actions.ts       # Auth server actions
 │   ├── (app)/               # Protected app pages
 │   │   ├── dashboard/
@@ -82,7 +86,11 @@ src/
 │   │   ├── settings/        # User settings
 │   │   └── layout.tsx       # App layout with nav
 │   ├── api/
-│   │   └── chat/route.ts    # Claude API endpoint
+│   │   ├── auth/            # Auth.js (Google sign-in) handler
+│   │   ├── chat/route.ts    # Teacher chat endpoint (streams; Balla Bot or direct Anthropic)
+│   │   ├── feedback/        # Settings feedback form → email via Resend
+│   │   ├── health/          # Unauthenticated {ok, ts} probe for launchd + Cloudflare
+│   │   └── reminders/
 │   ├── privacy/            # Privacy policy page
 │   ├── globals.css          # Global styles & CSS variables
 │   ├── layout.tsx           # Root layout
@@ -99,6 +107,10 @@ src/
 │   ├── site-url.ts          # Public base URL
 │   └── types.ts             # TypeScript types
 └── middleware.ts            # Auth middleware (route protection)
+
+scripts/
+├── mini/                    # Mac mini ops: deploy, install, backup, restore, healthcheck, launchd plists
+└── teacher-voice-*.ts       # Teacher wording test harness (npm run teacher-voice-test)
 
 public/
 ├── icons/                   # PWA icons (192x192, 512x512)
@@ -142,6 +154,8 @@ public/
 - `default_session_duration` (integer, seconds)
 - `default_practice_type` (text)
 - `custom_practice_types` (jsonb) - Array of {name, description?} objects for custom practice types
+- `bell_sound` (text) - Timer bell choice
+- `teacher_model` (text, nullable) - Teacher depth chosen in Settings; must be in `TEACHER_MODEL_ALLOWLIST`
 - `created_at` (timestamp)
 - `updated_at` (timestamp)
 
@@ -208,10 +222,13 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 - Practice type breakdown
 
 ### AI Meditation Teacher
-- Claude-powered chat (model configurable via `CLAUDE_MODEL` env var, defaults to Sonnet)
+- Claude-powered chat, streamed. Each user picks the depth in Settings (Balanced / Deep —
+  see Teacher models). `CLAUDE_MODEL` only matters on the direct-Anthropic fallback path.
 - Mahamudra/Dzogchen expertise
 - Access to user's practice history for personalized guidance
-- System prompt in `/api/chat/route.ts`
+- Prompt and wording in `src/lib/teacher/` (`prompt.ts`, `variants.ts`); endpoint in `src/app/api/chat/route.ts`
+- **Question box grows as you type** (up to ~200px, ~120px on mobile, then scrolls).
+  Enter sends; Shift+Enter adds a new line.
 - **Personalized suggested questions** based on practice profile:
   - New practitioner (< 5 sessions): Fundamentals
   - Returning after break (> 7 days): Re-engagement
@@ -384,8 +401,17 @@ The four mini-side dependencies:
 with `npm run dev` before pushing" rule no longer works as written. What a laptop *can*
 do alone: edit code, `npm run lint`, `npm test`, `npm run build`, and check static UI.
 
+**Reaching the mini from the laptop:** `ssh mini` (home network) or `ssh mini-ts` (from
+anywhere, via Tailscale) — both are set up in the laptop's `~/.ssh/config`, key-based, no
+password. The repo on the mini is `~/projects/dharma-practice`. Anything that must run on
+the mini can be done over SSH from a laptop session, e.g.
+`ssh mini 'cd ~/projects/dharma-practice && scripts/mini/install.sh --status'`.
+
+**Worktrees don't share installed packages.** A fresh `.claude/worktrees/…` copy has no
+`node_modules`; run `npm ci` in it before `npm run build` or `npm test`.
+
 Reaching the mini's loopback services from a laptop needs an SSH tunnel, e.g.
-`ssh -N -L 8097:127.0.0.1:8097 -L 5432:127.0.0.1:5432 -L 8099:127.0.0.1:8099 <mini-host>`.
+`ssh -N -L 8097:127.0.0.1:8097 -L 5432:127.0.0.1:5432 -L 8099:127.0.0.1:8099 mini`.
 Be aware the tunnel has been observed to die right after a single successful long call —
 `scripts/teacher-voice-test.ts` makes one bounded reconnect attempt per call if you set
 `DHARMA_LLM_TUNNEL_CMD` to the command that reopens it. Running on the mini avoids all this.
