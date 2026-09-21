@@ -610,6 +610,13 @@ Hard refresh: `Cmd+Shift+R` (Mac) or `Ctrl+Shift+R` (Windows). May also need to 
 2. Click "Unregister" on the service worker
 3. Hard refresh the page
 
+### Phone can't install the app / manifest and icons 302 instead of loading
+The manifest, icons, service worker and screenshot files are deliberately let through
+Cloudflare Access without sign-in by a separate, narrower Access application
+("dharma install files (public)") with a Bypass policy — a phone has to fetch them
+before anyone has signed in. The main "dharma" application still protects everything
+else. Check it's still working with `scripts/mini/check-install-files.sh`.
+
 ### "Check constraint violated" error
 A database constraint is blocking the value. Find and drop the constraint:
 ```sql
