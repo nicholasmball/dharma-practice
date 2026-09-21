@@ -7,6 +7,12 @@ import {
   bannedPhraseHits,
   quotedAttributionWithoutLookup,
   mentionsNotes,
+  punchyFragmentCount,
+  signpostCount,
+  concedeAndPraiseCount,
+  contrastCount,
+  opensWithAh,
+  closingQuestionAboutExperience,
 } from '../teacher-voice-measures.ts'
 
 describe('endsWithQuestionInLastParagraph', () => {
@@ -107,5 +113,58 @@ describe('mentionsNotes', () => {
 
   it('is false for a reply that only answers the question in front of it', () => {
     expect(mentionsNotes('Try sitting for five more minutes tomorrow and notice what settles.')).toBe(false)
+  })
+})
+
+describe('house-style measures', () => {
+  // Invented, written to show the habits the owner flagged on 21 Sep 2026.
+  const houseStyle =
+    "Quite right, and I'll take the correction. The rain was there. Clear. It was the listener that couldn't be found. That's the whole point, and you put it more cleanly than I did.\n\n" +
+    "And it's worth seeing why. Sounds appear. Thoughts appear. Nothing else. Awake to sound, not awake as someone.\n\n" +
+    'Now, what I\'d have you notice. So: are "heard" and "hearer" really two categories?'
+  // Invented, written in the old teacher's manner.
+  const oldStyle =
+    "Ah, what a lovely thing to notice in the rain. It's as if the sound and the hearing were one wave rather than a wave and a shore watching it.\n\n" +
+    'Next time you sit, let a sound arrive and rest right there with it for a few breaths, without reaching for where it lands.\n\n' +
+    'When the rain and the hearing come together like that, what do you notice in your body? Is there any sense of someone behind it?'
+
+  it('counts clipped punchy fragments but not questions', () => {
+    expect(punchyFragmentCount(houseStyle)).toBeGreaterThanOrEqual(4)
+    expect(punchyFragmentCount(oldStyle)).toBe(0)
+    expect(punchyFragmentCount('Really? Yes? Why?')).toBe(0)
+  })
+
+  it('counts lecture signposts', () => {
+    expect(signpostCount(houseStyle)).toBeGreaterThanOrEqual(4)
+    expect(signpostCount(oldStyle)).toBe(0)
+  })
+
+  it('counts conceding to and praising a correction', () => {
+    expect(concedeAndPraiseCount(houseStyle)).toBe(3)
+    expect(concedeAndPraiseCount(oldStyle)).toBe(0)
+  })
+
+  it('counts "not X, it\'s Y" contrasts', () => {
+    expect(contrastCount(houseStyle)).toBeGreaterThanOrEqual(1)
+    expect(contrastCount('It is not a thing — it is a process.')).toBe(1)
+    expect(contrastCount(oldStyle)).toBe(0)
+  })
+
+  it('spots an "Ah" opening', () => {
+    expect(opensWithAh(oldStyle)).toBe(true)
+    expect(opensWithAh(houseStyle)).toBe(false)
+    expect(opensWithAh('Aha, well.')).toBe(false)
+  })
+
+  it('tells a closing question about experience from an abstract puzzle', () => {
+    expect(closingQuestionAboutExperience(oldStyle)).toBe(true)
+    expect(closingQuestionAboutExperience(houseStyle)).toBe(false)
+    expect(closingQuestionAboutExperience('No question here.')).toBe(false)
+  })
+
+  it('is included in measureReply', () => {
+    const m = measureReply(houseStyle)
+    expect(m.houseStyle.concedeAndPraise).toBe(3)
+    expect(m.houseStyle.opensWithAh).toBe(false)
   })
 })

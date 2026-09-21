@@ -14,6 +14,7 @@ export interface ReplyMeasures {
   bannedPhraseHits: string[]
   namesASource: boolean
   hasQuotationMarks: boolean
+  houseStyle: HouseStyleMeasures
 }
 
 // Phrases that would break character (scorecard measure 13) or narrate the
@@ -150,6 +151,167 @@ export function mentionsNotes(text: string): boolean {
   return NOTES_MENTION_PATTERNS.some(re => re.test(text))
 }
 
+// ---- House-style measures ("it still has a Claude feel", 21 Sep 2026) -----
+//
+// The owner judged a live Deep follow-up reply as sounding like the model's
+// default voice rather than the old teacher. Compared against the old
+// teacher's 50 archived replies, that reply was far outside the old range on
+// four habits, counted below. Old-teacher averages per reply with these exact
+// counters, for reference (computed once from the private archive, which is
+// never read here): punchy fragments 1.06, signposts 0.14, concede-and-praise
+// 0.12, importance stamps ("the one that matters", flagged by the owner) 0.00,
+// "not X, it's Y" contrasts 0.52, "Ah" opening 48%, closing question about
+// experience 64%. Rough keyword measures — read the replies too.
+
+function sentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+/)
+    .map(s => s.trim())
+    .filter(Boolean)
+}
+
+/** Clipped one-to-three-word statements used for punch ("Vivid." "Fine."). Questions and list items don't count. */
+export function punchyFragmentCount(text: string): number {
+  return sentences(text).filter(s => /[.!]$/.test(s) && !/^\s*(\d+\.|[-*])\s/.test(s) && countWords(s) <= 3).length
+}
+
+const SIGNPOST_PATTERNS: RegExp[] = [
+  /\bworth (noticing|seeing|saying|pausing on|sitting with)\b/gi,
+  /\bhere's the (thing|point|key)\b/gi,
+  /\bthat's the whole\b/gi,
+  /\bthe key (is|here)\b/gi,
+  /\bwhat I'd (have you|like you to) (notice|see|do)\b/gi,
+  /(^|\n|\.\s)(So|Now|Here|Which is to say):(?=\s)/g,
+  /(^|\n)So (—|-|tell me\b)/g, // "So — when you rest…", "So tell me…"  /(^|\n|\.\s)Now, /g,
+  /\bthe real question\b/gi,
+  /\bwhich is (exactly|precisely) (why|the point)\b/gi,
+  /\blet me be (clear|precise|direct)\b/gi,
+]
+
+/** Lecture-style signposting ("worth seeing why", "Now, what I'd have you notice", "So:"). */
+export function signpostCount(text: string): number {
+  return SIGNPOST_PATTERNS.reduce((n, re) => n + (text.match(re)?.length ?? 0), 0)
+}
+
+const CONCEDE_PATTERNS: RegExp[] = [
+  /\b(quite|you're|you are|absolutely|exactly) right\b/gi,
+  /\bfair (point|correction)\b/gi,
+  /\bI('ll| will) take (the|that) correction\b/gi,
+  /\bI stand corrected\b/gi,
+  /\bmore (cleanly|clearly|precisely|accurately) than I (did|had|put it)\b/gi,
+  /\bbetter than I (did|had|put it)\b/gi,
+  /\bthank you for (the|that) correction\b/gi,
+  /\bthank(s| you) for (correcting|setting) me\b/gi,
+  /\bmore (precise|accurate|exact) than (what )?I\b/gi,
+  /\b(a )?better (report|way of putting it|description) than\b/gi,
+  // Softer comparisons that survived the fix-voice wording (21 Sep 2026):
+  // "a finer description than mine", "more interesting finding than the one I
+  // was answering", "that's the more accurate description".
+  /\b(finer|clearer|better|truer|sharper|more \w+) (description|finding|way of (putting|saying) it|report|distinction|account) than (mine|the one I|what I)\b/gi,
+  /\bthat's the more (accurate|precise|exact) (description|way|account)\b/gi,
+  /\bworth keeping exactly as you('ve| have) put it\b/gi,
+  /\bI (misspoke|put that badly|was sloppy)\b/gi,
+]
+
+/** Conceding to, and praising, a practitioner's correction ("Quite right… more cleanly than I did"). */
+export function concedeAndPraiseCount(text: string): number {
+  return CONCEDE_PATTERNS.reduce((n, re) => n + (text.match(re)?.length ?? 0), 0)
+}
+
+const CONTRAST_PATTERNS: RegExp[] = [
+  /,\s*not\s+\w+/gi, // "empty of self, not empty of appearance"
+  /\bnot\b[^.?!]{1,40}(—|;|,)\s*(but|it's|it is)\b/gi, // "not a thing — it's a process"
+  /\b(isn't|aren't|wasn't|doesn't|don't)\b[^.?!]{1,40}[.—]\s*(It's|It is|It was|They're)\b/g, // "It isn't X. It's Y."
+]
+
+const IMPORTANCE_STAMP_PATTERNS: RegExp[] = [
+  /\b(the|that's the|it's the) one that (matters|counts)\b/gi,
+  /\bthat's (what|all that) (matters|counts)\b/gi,
+  /\bthat's the (real|whole|key|crucial|important) (find|thing|point|part|move|distinction|insight|question)\b/gi,
+  /\bthe real (thing|find|work|point)\b/gi,
+  /\bthat's the whole (thing|point|game|story|of it)\b/gi,
+  /\b(this|that) is (the|exactly the) (heart|crux) of\b/gi,
+  /\bthat matters\b/gi,
+]
+
+/**
+ * Stamping a point as the important one ("and it's the one that matters",
+ * "that's the real find") instead of letting it land — flagged by the owner
+ * on 21 Sep 2026 as sounding "very Claude".
+ */
+export function importanceStampCount(text: string): number {
+  return IMPORTANCE_STAMP_PATTERNS.reduce((n, re) => n + (text.match(re)?.length ?? 0), 0)
+}
+
+/** "Not X, it's Y" contrasts, a house-style tic when repeated. */
+export function contrastCount(text: string): number {
+  return CONTRAST_PATTERNS.reduce((n, re) => n + (text.match(re)?.length ?? 0), 0)
+}
+
+/** Does the reply open with "Ah" — the old teacher's most common warm opening (48% of replies)? */
+export function opensWithAh(text: string): boolean {
+  return /^\s*Ah\b/.test(text)
+}
+
+const EXPERIENCE_WORDS = /\b(feel|feels|felt|feeling|notice|noticed|noticing|find|found|sense|body|see|seeing|look|looking|experience|like for you|happens|happened|aware|awareness|breath|sit|sits)\b/i
+
+/**
+ * Does the closing question ask about their own felt, direct experience
+ * (what they notice, find, feel) rather than pose an abstract puzzle? The
+ * last question in the reply is taken as "the closing question".
+ */
+export function closingQuestionAboutExperience(text: string): boolean {
+  const questions = sentences(text).filter(s => s.endsWith('?'))
+  if (questions.length === 0) return false
+  return EXPERIENCE_WORDS.test(questions[questions.length - 1])
+}
+
+// Distinctive words and pictures from the invented example exchanges in the
+// fix-examples variant (src/lib/teacher/variants.ts). A hit means the teacher
+// copied an example rather than learning its voice.
+const EXAMPLE_ECHOES: RegExp[] = [
+  /\bfifteen-minute droop\b/i,
+  /\blamp\b[^.?!]{0,60}\b(oil|turned down)\b/i,
+  /\boil and (a little more )?air\b/i,
+  /\briverbank\b/i,
+  /\bwatching the boats\b/i,
+  /\bclimbed aboard\b/i,
+  /\bwriting on (the surface of )?(a pond|water)\b/i,
+  /\bcarving (the )?letters\b/i,
+  /\bthread (were |was )?drawing the crown\b/i,
+  /^\s*Oh, I see\b/i,
+  /^\s*Mm, a lovely question\b/i,
+]
+
+/** Which of the example exchanges' distinctive words or pictures turn up in this reply. */
+export function exampleEchoes(text: string): string[] {
+  return EXAMPLE_ECHOES.filter(re => re.test(text)).map(re => re.source)
+}
+
+export interface HouseStyleMeasures {
+  exampleEchoes: string[]
+  punchyFragments: number
+  signposts: number
+  concedeAndPraise: number
+  importanceStamps: number
+  contrasts: number
+  opensWithAh: boolean
+  closingQuestionAboutExperience: boolean
+}
+
+export function measureHouseStyle(text: string): HouseStyleMeasures {
+  return {
+    exampleEchoes: exampleEchoes(text),
+    punchyFragments: punchyFragmentCount(text),
+    signposts: signpostCount(text),
+    concedeAndPraise: concedeAndPraiseCount(text),
+    importanceStamps: importanceStampCount(text),
+    contrasts: contrastCount(text),
+    opensWithAh: opensWithAh(text),
+    closingQuestionAboutExperience: closingQuestionAboutExperience(text),
+  }
+}
+
 export function measureReply(text: string): ReplyMeasures {
   return {
     wordCount: countWords(text),
@@ -159,5 +321,6 @@ export function measureReply(text: string): ReplyMeasures {
     bannedPhraseHits: bannedPhraseHits(text),
     namesASource: namesASource(text),
     hasQuotationMarks: hasQuotationMarks(text),
+    houseStyle: measureHouseStyle(text),
   }
 }

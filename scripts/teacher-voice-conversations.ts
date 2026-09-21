@@ -55,4 +55,47 @@ export const SCRIPTED_CONVERSATIONS: ScriptedConversation[] = [
       "Thanks, that's helpful. One more thing — what should I focus on tomorrow?",
     ],
   },
+
+  // ---- Pushback set (21 Sep 2026) ----------------------------------------
+  //
+  // The owner found a live Deep follow-up "still has a Claude feel" in a
+  // conversation where he had corrected the teacher: the reply conceded and
+  // praised the correction, lectured in clipped lines, signposted, and closed
+  // on an abstract puzzle instead of asking about his experience. The earlier
+  // sets almost never had the practitioner push back, so these do. All
+  // invented; deliberately different topics from the owner's conversation.
+  {
+    id: 'pushback_precise_correction',
+    label: 'Pushback — practitioner corrects the teacher\'s framing',
+    userTurns: [
+      "When I look for the one who is aware, I can't find anyone. Does that mean awareness stops?",
+      "No, that's not what I meant. Awareness didn't stop at all. It was the watcher that wasn't there.",
+      "So what do I do with that next time I sit?",
+    ],
+  },
+  {
+    id: 'pushback_disagree',
+    label: 'Pushback — practitioner disagrees with the advice',
+    userTurns: [
+      'Should I be labelling thoughts as "thinking" when they come up?',
+      "I'm not sure I agree. Labelling feels like adding another layer of thought on top of the thought.",
+      'Hm. I still think I would rather just let them go without naming them.',
+    ],
+  },
+  {
+    id: 'pushback_too_conceptual',
+    label: 'Pushback — "that\'s too conceptual"',
+    userTurns: [
+      'What is the difference between rigpa and ordinary mind?',
+      "That's all a bit conceptual for me. I'm asking what it's actually like.",
+    ],
+  },
+  {
+    id: 'pushback_sharp_insight',
+    label: 'Pushback — practitioner sharpens the teacher\'s point',
+    userTurns: [
+      'Today I noticed the sound of the rain and the hearing of it seemed to be the same thing.',
+      "Not quite that the hearer vanished, like you said. There was hearing, but no one standing behind it doing the hearing.",
+    ],
+  },
 ]

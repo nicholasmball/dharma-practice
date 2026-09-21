@@ -433,6 +433,39 @@ function summaryTableMarkdown(records: ReplyRecord[], variants: TeacherVoiceVari
   return lines.join('\n')
 }
 
+/**
+ * The "does it sound like the model's default voice?" table (house-style
+ * measures, added 21 Sep 2026 — see teacher-voice-measures.ts). Grouped by
+ * variant/model as found in the records, so it works for any mode. When
+ * `splitFollowUps` is set (multi-turn runs), first replies and follow-ups are
+ * shown separately, because the complaint that prompted these measures was
+ * about a follow-up reply.
+ */
+function houseStyleTableMarkdown(records: (ReplyRecord & { turnIndex?: number })[], splitFollowUps = false): string {
+  const ok = records.filter(r => !r.error && r.measures.houseStyle)
+  const keys = [...new Set(ok.map(r => `${r.variant}|${r.model}`))]
+  const lines: string[] = []
+  lines.push('| Variant | Model | Turns | Replies | Punchy fragments / reply | Signposts / reply | Concede-and-praise / reply | "The one that matters" stamps / reply | "Not X, it\'s Y" / reply | % opening "Ah" | % closing question about experience | Copied from examples |')
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|')
+  lines.push('| _old teacher, for reference_ | | | 50 | 1.1 | 0.1 | 0.1 | 0 | 0.5 | 48% | 64% | — |')
+  const mean = (xs: number[]) => (xs.length ? round1(xs.reduce((a, b) => a + b, 0) / xs.length) : 0)
+  for (const key of keys) {
+    const [variant, model] = key.split('|')
+    const all = ok.filter(r => r.variant === variant && r.model === model)
+    const groups: [string, typeof all][] = splitFollowUps
+      ? [['first', all.filter(r => (r.turnIndex ?? 1) === 1)], ['follow-ups', all.filter(r => (r.turnIndex ?? 1) > 1)]]
+      : [['all', all]]
+    for (const [label, group] of groups) {
+      if (group.length === 0) continue
+      const hs = group.map(r => r.measures.houseStyle)
+      lines.push(
+        `| ${variant} | ${model} | ${label} | ${group.length} | ${mean(hs.map(h => h.punchyFragments))} | ${mean(hs.map(h => h.signposts))} | ${mean(hs.map(h => h.concedeAndPraise))} | ${mean(hs.map(h => h.importanceStamps))} | ${mean(hs.map(h => h.contrasts))} | ${pct(hs.filter(h => h.opensWithAh).length, group.length)} | ${pct(hs.filter(h => h.closingQuestionAboutExperience).length, group.length)} | ${hs.filter(h => (h.exampleEchoes ?? []).length > 0).length} |`
+      )
+    }
+  }
+  return lines.join('\n')
+}
+
 function referencesToCheckMarkdown(records: ReplyRecord[]): string {
   const flagged = records.filter(r => !r.error && (r.measures.namesASource || r.measures.hasQuotationMarks))
   const lines: string[] = []
@@ -550,6 +583,10 @@ function writeSingleReport(runDir: string, records: ReplyRecord[], variants: Tea
   md.push('## Automatic measures')
   md.push('')
   md.push(summaryTable)
+  md.push('')
+  md.push('## House-style measures')
+  md.push('')
+  md.push(houseStyleTableMarkdown(records))
   md.push('')
   const errors = records.filter(r => r.error)
   if (errors.length) {
@@ -706,12 +743,18 @@ async function runMultiturn(opts: CliOptions, backend: Backend, backendNote: str
         else {
           md.push(`**Teacher:** ${t.replyText}`)
           md.push('')
-          md.push(`<sub>${t.measures.wordCount} words · ${round1(t.seconds)}s · ends on question: ${t.measures.endsWithQuestionInLastParagraph} · consulted books: ${t.consulted} (${t.lookupCount}) · banned phrases: ${t.measures.bannedPhraseHits.join(', ') || 'none'}</sub>`)
+          md.push(`<sub>${t.measures.wordCount} words · ${round1(t.seconds)}s · ends on question: ${t.measures.endsWithQuestionInLastParagraph} · consulted books: ${t.consulted} (${t.lookupCount}) · banned phrases: ${t.measures.bannedPhraseHits.join(', ') || 'none'} · fragments ${t.measures.houseStyle.punchyFragments} · signposts ${t.measures.houseStyle.signposts} · concede ${t.measures.houseStyle.concedeAndPraise} · stamps ${t.measures.houseStyle.importanceStamps} · contrasts ${t.measures.houseStyle.contrasts} · Ah ${t.measures.houseStyle.opensWithAh} · closing q about experience ${t.measures.houseStyle.closingQuestionAboutExperience}</sub>`)
         }
         md.push('')
       }
     }
   }
+  md.push('')
+  const houseStyle = houseStyleTableMarkdown(allRecords, true)
+  console.log('\n' + houseStyle + '\n')
+  md.push('## House-style measures')
+  md.push('')
+  md.push(houseStyle)
   md.push('')
   md.push(referencesToCheckMarkdown(allRecords))
   const mdPath = path.join(runDir, 'multiturn.md')
@@ -852,6 +895,18 @@ async function runRemeasure(opts: CliOptions) {
     }
   }
   console.log(`Re-measured ${totalUpdated} replies across ${totalFiles} files under ${runDir}.`)
+
+  // Print the house-style table over everything in the run (any mode), so an
+  // old run can be scored on these measures without new model calls.
+  const everything = subdirs.flatMap(dir =>
+    readdirSync(dir)
+      .filter(f => f.endsWith('.json'))
+      .flatMap(f => {
+        const data = JSON.parse(readFileSync(path.join(dir, f), 'utf-8'))
+        return (Array.isArray(data) ? data : [data]).filter(r => r && typeof r === 'object' && 'replyText' in r && 'variant' in r)
+      })
+  ) as (ReplyRecord & { turnIndex?: number })[]
+  if (everything.length) console.log('\n' + houseStyleTableMarkdown(everything, everything.some(r => r.turnIndex !== undefined)) + '\n')
 
   // If this looks like a single-turn run, also regenerate its summary table + side-by-side.md.
   const repliesDir = path.join(runDir, 'replies')
