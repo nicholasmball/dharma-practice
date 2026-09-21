@@ -30,13 +30,14 @@ describe('getVariant', () => {
     }
   })
 
-  it('approved (shipped) and fix-ai-answer (the latest tested candidate) build identical output, turn by turn', () => {
+  it('approved (shipped) and fix-examples-books (the latest tested candidate) build identical output, turn by turn', () => {
     // Guards against silent drift between src/lib/teacher/prompt.ts (what
     // the route ships) and the variant it was promoted from
     // (docs/teacher-voice-approved-wording.md). The pairing moves forward
-    // each time a fix is promoted — it was fix-notes-turn before fix 4.
+    // each time a fix is promoted — fix-notes-turn before fix 4, fix-ai-answer
+    // before fix 5.
     const approved = getVariant('approved')
-    const fixAiAnswer = getVariant('fix-ai-answer')
+    const fixAiAnswer = getVariant('fix-examples-books')
     const background = {
       sessions: [{ practice_type: 'shamatha', duration_seconds: 600, started_at: '2026-09-18T08:00:00Z' }],
       entries: [],

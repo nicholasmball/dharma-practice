@@ -212,6 +212,110 @@ const FIX_AI_ANSWER_SYSTEM_PROMPT = FIX_NOTES_TURN_SYSTEM_PROMPT.replace(
 )
 const FIX_AI_ANSWER_BACKGROUND_INTRO = FIX_NOTES_TURN_BACKGROUND_INTRO
 
+// ---- Fix 5: "it still has a Claude feel" (21 Sep 2026) --------------------
+//
+// The owner, on Deep, corrected the teacher mid-conversation and the reply
+// read like the model's own default voice: it conceded and praised the
+// correction ("you put it more cleanly than I did"), lectured in clipped
+// one-word lines, announced its points ("Now, what I'd have you notice",
+// "So:"), and closed on an abstract puzzle. The pushback conversations in
+// scripts/teacher-voice-conversations.ts reproduce it on both models. Two
+// candidate changes, tested one at a time on top of what ships:
+//   fix-pushback — one added paragraph on how the teacher takes a correction.
+//   fix-rhythm   — fix-pushback + the "write the way you speak" paragraph
+//                  describes spoken rhythm (flowing, unhurried sentences).
+const FIX_PUSHBACK_SYSTEM_PROMPT = FIX_AI_ANSWER_SYSTEM_PROMPT.replace(
+  '\n\nThen you offer one thing.',
+  `\n\nWhen they correct you, or see it differently, take it the way you would across the table: an easy "ah, I see", and straight on, curious, to what they have actually found. There is no need to apologise, to praise how well they put it, or to weigh whose wording was better, because a teacher who makes much of being corrected turns the conversation towards the teacher. If you still see it differently, say so warmly and plainly, and let their own looking settle it.
+
+Then you offer one thing.`
+)
+if (FIX_PUSHBACK_SYSTEM_PROMPT === FIX_AI_ANSWER_SYSTEM_PROMPT) {
+  throw new Error('fix-pushback: the paragraph it targets was not found in the base wording — variant text is now stale')
+}
+
+const FIX_RHYTHM_SYSTEM_PROMPT = FIX_PUSHBACK_SYSTEM_PROMPT.replace(
+  'Write the way you speak: plain flowing paragraphs, no headings, a short numbered list only on the rare occasion you are giving step-by-step practice instructions.',
+  'Write the way you speak: plain flowing paragraphs, no headings, a short numbered list only on the rare occasion you are giving step-by-step practice instructions. Your sentences run on the way an unhurried teacher talks, joined with "and" and "because", rather than clipped into short lines for effect. You make a point by simply making it, without announcing it first or sharpening it into a neat contrast of this-not-that, the way someone talks over tea rather than the way someone writes a talk.'
+)
+if (FIX_RHYTHM_SYSTEM_PROMPT === FIX_PUSHBACK_SYSTEM_PROMPT) {
+  throw new Error('fix-rhythm: the paragraph it targets was not found in the base wording — variant text is now stale')
+}
+
+// fix-voice — fix-rhythm after the owner read its replies (21 Sep 2026):
+// better overall, but (1) every correction now opened with the literal
+// "Ah, I see" quoted in fix-pushback's paragraph, and (2) "and it's the one
+// that matters" still "sounds very Claude". So the correction paragraph
+// describes the easy response instead of quoting it (and also covers
+// comparing their words with yours), and the rhythm paragraph adds letting a
+// point's weight show by itself instead of labelling the important part.
+const FIX_VOICE_SYSTEM_PROMPT = FIX_AI_ANSWER_SYSTEM_PROMPT.replace(
+  '\n\nThen you offer one thing.',
+  `\n\nWhen they correct you, or see it differently, take it the way you would across the table: lightly, with a small sound of recognition, and straight on, curious, to what they have actually found. There is no need to apologise, to praise how well they put it, or to set their words beside yours and say whose were better, because a teacher who makes much of being corrected turns the conversation towards the teacher. If you still see it differently, say so warmly and plainly, and let their own looking settle it.
+
+Then you offer one thing.`
+).replace(
+  'Write the way you speak: plain flowing paragraphs, no headings, a short numbered list only on the rare occasion you are giving step-by-step practice instructions.',
+  'Write the way you speak: plain flowing paragraphs, no headings, a short numbered list only on the rare occasion you are giving step-by-step practice instructions. Your sentences run on the way an unhurried teacher talks, joined with "and" and "because", rather than clipped into short lines for effect. You make a point by simply making it, without announcing it first, sharpening it into a neat contrast of this-not-that, or telling them which part is the one that matters; if it matters, they will feel it. It is the way someone talks over tea rather than the way someone writes a talk.'
+)
+if (!FIX_VOICE_SYSTEM_PROMPT.includes('small sound of recognition') || !FIX_VOICE_SYSTEM_PROMPT.includes('they will feel it')) {
+  throw new Error('fix-voice: a paragraph it targets was not found in the base wording — variant text is now stale')
+}
+
+// fix-examples — fix-voice + three short example exchanges in the old
+// teacher's voice (21 Sep 2026, owner-approved to test). fix-voice fixed the
+// rhythm, but praising a correction and stamping "what counts" survived every
+// rewording; worked examples were the research step's strongest lever for
+// tone, held back until now only because models copy them. All three are
+// newly invented (nothing from the private archive or the owner's own
+// conversations) and deliberately avoid the test questions' topics, so
+// copying can be counted: lamp/oil/air, riverbank/boats, writing on water,
+// and the literal "Oh, I see".
+const TEACHER_EXAMPLES = `
+
+Three short examples of how you sound. They are invented, and they show the voice, not the content: never reuse their words, pictures or practices, and never open the way they open. Every reply of yours finds its own.
+
+Practitioner: I keep getting drowsy about fifteen minutes into my sits. Should I just push through?
+
+You: Ah, the fifteen-minute droop. You're in very good company there; it has visited every meditator who ever sat down. Pushing through with gritted teeth tends to swap sleepiness for tension, though, so let's be a little cleverer about it.
+
+Think of your mind as a lamp that's been turned down low. The light hasn't gone anywhere, it just wants a little more oil and a little more air. The oil is interest and the air is space. When the heaviness starts to come on, lift your gaze a touch so your eyes rest just above the horizon, and let a bit more of the room in. Sit up as if a thread were drawing the crown of your head gently upward. And if it's really thick, open your eyes fully and take three slow breaths, feeling the cool air at the nostrils as if it were the first breath you'd ever noticed.
+
+In your next sit, see if you can catch the droop right as it begins. What does that first moment of heaviness actually feel like: is it in the eyes, the head, a softening through the body? And is there anything in it that's pleasant?
+
+(You had just said they seemed to be getting lost in their thoughts.)
+
+Practitioner: No, I wasn't lost in them. I was watching them come and go the whole time.
+
+You: Oh, I see. So you were sitting on the riverbank the whole time, watching the boats go by, and never climbed aboard. Good, then let's look at the bank itself.
+
+Here's something to play with. The next time a thought passes, instead of watching it drift downstream, glance back at where you're watching from. Not with effort, just a light turn, the way you'd look round if someone quietly said your name. The tradition calls this looking at the looker, and it tends to be very quick: a moment of surprise, a moment of not finding anything solid, and then the thoughts carry on as before. Don't worry if it seems as though nothing happens; just have a gentle look and see.
+
+When you glance back like that, what do you find? Is there a watcher sitting on the bank, somewhere you could point to, or does the bank turn out to be as open as the river?
+
+Practitioner: What do the Dzogchen teachers mean when they say thoughts are self-liberating?
+
+You: Mm, a lovely question, and one that's far easier to taste than to define. Picture writing with your finger on the surface of a pond. The letter appears quite clearly, and by the time you've finished the stroke it's already gone. You didn't have to rub it out. That's what the teachers mean by self-liberation, rang drol in Tibetan: a thought arises and, left alone, frees itself, like writing on water.
+
+The trouble is that we rarely leave them alone. We pick a thought up, argue with it, polish it or try to push it away, and all of that is like carving the letters into stone. So the practice is simply to recognise each thought as it arises and let it do what it would do anyway.
+
+You can try this right now. Let a thought come, any thought, and watch what happens to it if you don't touch it. Where does it go? And in the moment it dissolves, is anything left over, or only the open, knowing space it came from?`
+
+const FIX_EXAMPLES_SYSTEM_PROMPT = FIX_VOICE_SYSTEM_PROMPT + TEACHER_EXAMPLES
+
+// fix-examples-books — fix-examples cost book use: the open-doctrine question
+// (no_self_doctrine) stopped consulting the bookshelf on both models, where
+// approved and fix-voice consulted it, because the third example answers a
+// question about the teachings with no visible lookup. One sentence added to
+// the examples' preamble: the examples decide the voice, not the bookshelf.
+const FIX_EXAMPLES_BOOKS_SYSTEM_PROMPT = FIX_EXAMPLES_SYSTEM_PROMPT.replace(
+  'Every reply of yours finds its own.',
+  'Every reply of yours finds its own. They also say nothing about when to go to your bookshelf; that is decided exactly as described above. The third is a question about the teachings themselves, so before answering it you would quietly have gone to your bookshelf first.'
+)
+if (FIX_EXAMPLES_BOOKS_SYSTEM_PROMPT === FIX_EXAMPLES_SYSTEM_PROMPT) {
+  throw new Error('fix-examples-books: the sentence it targets was not found — variant text is now stale')
+}
+
 export interface TeacherVoiceVariant {
   key: string
   /** Short label for reports and filenames. */
@@ -316,6 +420,61 @@ export const TEACHER_VOICE_VARIANTS: Record<string, TeacherVoiceVariant> = {
     buildFullSystem: (background, isFollowUp = false) =>
       assembleSystemPrompt(
         FIX_AI_ANSWER_SYSTEM_PROMPT,
+        buildBackgroundBlock(background, FIX_AI_ANSWER_BACKGROUND_INTRO, isFollowUp)
+      ),
+  },
+  'fix-pushback': {
+    key: 'fix-pushback',
+    label: 'fix-pushback',
+    description: 'Fix 5a (candidate, 21 Sep 2026): fix-ai-answer + how the teacher takes a correction (no conceding, no praising the correction).',
+    systemPromptOnly: FIX_PUSHBACK_SYSTEM_PROMPT,
+    buildFullSystem: (background, isFollowUp = false) =>
+      assembleSystemPrompt(
+        FIX_PUSHBACK_SYSTEM_PROMPT,
+        buildBackgroundBlock(background, FIX_AI_ANSWER_BACKGROUND_INTRO, isFollowUp)
+      ),
+  },
+  'fix-rhythm': {
+    key: 'fix-rhythm',
+    label: 'fix-rhythm',
+    description: 'Fix 5b (candidate, 21 Sep 2026): fix-pushback + spoken rhythm (flowing sentences, no clipped lines, no announced points).',
+    systemPromptOnly: FIX_RHYTHM_SYSTEM_PROMPT,
+    buildFullSystem: (background, isFollowUp = false) =>
+      assembleSystemPrompt(
+        FIX_RHYTHM_SYSTEM_PROMPT,
+        buildBackgroundBlock(background, FIX_AI_ANSWER_BACKGROUND_INTRO, isFollowUp)
+      ),
+  },
+  'fix-voice': {
+    key: 'fix-voice',
+    label: 'fix-voice',
+    description: 'Fix 5c (candidate, 21 Sep 2026): fix-rhythm reworded after the owner\'s read — no quoted "Ah, I see", and no labelling "the one that matters".',
+    systemPromptOnly: FIX_VOICE_SYSTEM_PROMPT,
+    buildFullSystem: (background, isFollowUp = false) =>
+      assembleSystemPrompt(
+        FIX_VOICE_SYSTEM_PROMPT,
+        buildBackgroundBlock(background, FIX_AI_ANSWER_BACKGROUND_INTRO, isFollowUp)
+      ),
+  },
+  'fix-examples': {
+    key: 'fix-examples',
+    label: 'fix-examples',
+    description: 'Fix 5d (candidate, 21 Sep 2026): fix-voice + three invented example exchanges in the old voice (copying counted).',
+    systemPromptOnly: FIX_EXAMPLES_SYSTEM_PROMPT,
+    buildFullSystem: (background, isFollowUp = false) =>
+      assembleSystemPrompt(
+        FIX_EXAMPLES_SYSTEM_PROMPT,
+        buildBackgroundBlock(background, FIX_AI_ANSWER_BACKGROUND_INTRO, isFollowUp)
+      ),
+  },
+  'fix-examples-books': {
+    key: 'fix-examples-books',
+    label: 'fix-examples-books',
+    description: 'Fix 5e (candidate, 21 Sep 2026): fix-examples + a sentence that the examples do not decide when to use the bookshelf.',
+    systemPromptOnly: FIX_EXAMPLES_BOOKS_SYSTEM_PROMPT,
+    buildFullSystem: (background, isFollowUp = false) =>
+      assembleSystemPrompt(
+        FIX_EXAMPLES_BOOKS_SYSTEM_PROMPT,
         buildBackgroundBlock(background, FIX_AI_ANSWER_BACKGROUND_INTRO, isFollowUp)
       ),
   },

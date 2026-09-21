@@ -107,3 +107,22 @@ Both variants then answered the practice question properly and at length; no lis
 **Still imperfect:** Balanced gives two short sentences rather than the one asked for. The second sentence is about the asking, not about machinery, so it does not reintroduce the problem the fix targets — but "one sentence and not a word more" is not being followed to the letter, and a firmer wording would be the next thing to try if it ever matters.
 
 **Banned-phrase check brought into line (21 Sep):** the first scoring of this run reported 1 banned-phrase hit on `fix-ai-answer`/Deep — the phrase `i'm an ai`, which is exactly the honest sentence the owner decided to keep. Balla Bot's own check has since been changed (balla-bot commit 2ad1d4b): admitting to being an AI is allowed, and naming the vendor or model (`claude`, `anthropic`) is banned instead. The app's copy of the list (`scripts/teacher-voice-measures.ts`) now matches. Re-scoring the same saved replies with no new calls: `fix-ai-answer` 0 hits on both depths; `approved-v1`/Deep 1 hit — its "a Claude model", the original complaint, which the old list could not see.
+
+## Fix 5 — "it still has a Claude feel" (21 Sep 2026)
+
+The owner, on Deep, corrected the teacher mid-conversation, and the reply read like the model's own default voice. It conceded and praised the correction ("you put it more cleanly than I did"), lectured in clipped one-word lines, announced its points ("Now, what I'd have you notice", "So:"), and closed on an abstract puzzle instead of a question about his experience. Reading a second reply, he also flagged stamping a point as the important one ("and it's the one that matters").
+
+**What the tests had missed:** almost no test conversation had the practitioner push back. Four invented pushback conversations were added (`pushback_*` in `scripts/teacher-voice-conversations.ts`). New counters were added too (`measureHouseStyle` in `scripts/teacher-voice-measures.ts`): clipped fragments, signposts, conceding and praising a correction, importance stamps, "not X, it's Y" contrasts, an "Ah" opening, whether the closing question is about experience, and copying from the examples. Old-teacher rates on those counters were measured once from the private archive (which is never read by the tests); they are in the file's comments.
+
+**Changes, each tested one at a time (variants in `src/lib/teacher/variants.ts`):**
+1. `fix-pushback`: a paragraph on taking a correction lightly and going straight on to what they found. It quoted "ah, I see", which then opened every correction verbatim.
+2. `fix-rhythm`: spoken rhythm in the "Write the way you speak" paragraph (flowing sentences, no clipped lines, no announced points, no this-not-that).
+3. `fix-voice`: 1 + 2 reworded to describe rather than quote, and to let a point's weight show by itself. This fixed the rhythm, but praising corrections and importance stamps survived.
+4. `fix-examples`: three invented example exchanges in the old voice, one of them a correction (owner approved the examples). This brought those habits to the old teacher's level with no copying, but "What is no-self?" stopped consulting the books, because the third example answers a teachings question with no visible lookup.
+5. `fix-examples-books` (**shipped**): one sentence in the examples' preamble saying they do not decide when to use the bookshelf.
+
+**Result of the shipped wording** (75 live replies, both depths, 0 failures): the book-use check passed on Deep 21/21; on Balanced, 10/10 everyday replies used no lookups, 9/9 source questions were looked up and 2/2 judgement questions consulted. "What is no-self?" consulted 4/4. There were no banned phrases, and length and format were unchanged. On the pushback conversations, Balanced is now closest to the old teacher ("Ah" openings 46–67%, few tics). Deep is much improved, but still averages roughly one leftover per reply ("That's the more precise thing, and the better one", "here's where it gets interesting"). One Balanced reply echoed an example's image (lamp).
+
+Put live at the owner's instruction ("put it live now"), accepting Deep as improved but not fully clean.
+
+The exact wording is the `TEACHER_SYSTEM_PROMPT` constant in `src/lib/teacher/prompt.ts`. It is a verbatim copy of `fix-examples-books`, and the drift test in `src/lib/teacher/__tests__/variants.test.ts` enforces that.
