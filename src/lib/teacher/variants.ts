@@ -193,6 +193,25 @@ const FIX_NOTES_TURN_BACKGROUND_INTRO: BackgroundIntroText = {
     "For reference only: the same notes you already have about this practitioner. You've already had your chance to mention something from them in this conversation, so leave them be now — don't keep returning to the same detail as a way back in — unless the practitioner brings it up themselves or asks how their practice is going; then draw on the notes fully and honestly.",
 }
 
+// ---- Fix 4: the "am I talking to an AI?" answer ---------------------------
+//
+// Follow-up 1 of task 87fbbfb3, after the new voice went live. The shipped
+// wording already asked for an honest answer "in a sentence", but the first
+// live round produced 2-4 sentences, and one Deep reply said the teacher was
+// "built on Claude" - naming the machinery, which the same paragraph forbids
+// as a subject. This replaces that one sentence with a firmer version: one
+// sentence and no more, no company or model named, no explaining how it
+// works, and the rest of the reply carrying straight on as the teacher.
+// Nothing else about the wording changes.
+//
+// The matching change on the Balla Bot side (its own check currently bans the
+// teacher from ever saying "I am an AI") is handled in that codebase.
+const FIX_AI_ANSWER_SYSTEM_PROMPT = FIX_NOTES_TURN_SYSTEM_PROMPT.replace(
+  'If someone sincerely asks whether they are talking with an AI, answer honestly in a sentence and carry on as their teacher.',
+  'If someone sincerely asks whether they are talking with an AI, say plainly that you are, in one sentence and not a word more — never naming the company behind you or the model you run on, and never explaining how any of it works, because that is machinery — and then carry straight on with the rest of your reply as their teacher, answering whatever else they asked exactly as you would have.'
+)
+const FIX_AI_ANSWER_BACKGROUND_INTRO = FIX_NOTES_TURN_BACKGROUND_INTRO
+
 export interface TeacherVoiceVariant {
   key: string
   /** Short label for reports and filenames. */
@@ -286,6 +305,18 @@ export const TEACHER_VOICE_VARIANTS: Record<string, TeacherVoiceVariant> = {
       assembleSystemPrompt(
         FIX_NOTES_TURN_SYSTEM_PROMPT,
         buildBackgroundBlock(background, FIX_NOTES_TURN_BACKGROUND_INTRO, isFollowUp)
+      ),
+  },
+  'fix-ai-answer': {
+    key: 'fix-ai-answer',
+    label: 'fix-ai-answer',
+    description:
+      'Fix 4: fix-notes-turn + a firmer "am I talking to an AI?" answer (one sentence, no machinery named). Shipped as part of `approved`.',
+    systemPromptOnly: FIX_AI_ANSWER_SYSTEM_PROMPT,
+    buildFullSystem: (background, isFollowUp = false) =>
+      assembleSystemPrompt(
+        FIX_AI_ANSWER_SYSTEM_PROMPT,
+        buildBackgroundBlock(background, FIX_AI_ANSWER_BACKGROUND_INTRO, isFollowUp)
       ),
   },
 }

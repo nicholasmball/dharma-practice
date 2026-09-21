@@ -31,28 +31,28 @@ export default function PrivacyPage() {
         <section>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 500, marginBottom: '12px' }}>How We Use Your Data</h2>
           <p style={{ lineHeight: 1.7 }}>
-            Your data is used solely to provide the app's functionality: tracking your meditation practice, displaying statistics, and personalizing your experience. We do not use your data for advertising or marketing purposes.
+            Your data is used solely to provide the app&apos;s functionality: tracking your meditation practice, displaying statistics, and personalizing your experience. We do not use your data for advertising or marketing purposes.
           </p>
         </section>
 
         <section>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 500, marginBottom: '12px' }}>Data Storage</h2>
           <p style={{ lineHeight: 1.7 }}>
-            Your data is stored securely using Supabase, a trusted database platform with enterprise-grade security. All data is encrypted in transit and at rest. Your password is hashed and never stored in plain text.
+            Your data is stored in a private PostgreSQL database on a self-hosted machine we control, not on a third-party cloud database service. Access is restricted to your own account: every request carries a short-lived token identifying you, and the database enforces row-level security so one account cannot read another&apos;s data. Traffic to and from the app is encrypted in transit. We never see or store a password for this app &mdash; you sign in with Google, and only your email address is shared with us.
           </p>
         </section>
 
         <section>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 500, marginBottom: '12px' }}>Data Sharing</h2>
           <p style={{ lineHeight: 1.7 }}>
-            We do not sell, trade, or share your personal data with third parties. Your meditation practice data is private and belongs to you.
+            We do not sell, trade, or rent your personal data, and we do not share it for advertising or analytics. Your meditation practice data is private and belongs to you. There is one exception, and it is the AI teacher &mdash; described in full in the next section. Aside from Google, who verify your sign-in, and Anthropic, who process your AI teacher conversations, no third party receives your data.
           </p>
         </section>
 
         <section>
           <h2 style={{ fontSize: '1.25rem', fontWeight: 500, marginBottom: '12px' }}>AI Teacher</h2>
           <p style={{ lineHeight: 1.7 }}>
-            Conversations with the AI meditation teacher are processed using Anthropic's Claude API. Your practice history may be shared with the AI to provide personalized guidance. Anthropic does not use this data to train their models.
+            The AI teacher is the one part of the app that sends your data outside our own machine. When you write to the teacher, your message is passed through our own server to Anthropic&apos;s Claude API, which generates the reply. So that the teacher can give guidance that fits your practice rather than generic advice, a summary of your recent sessions and your most recent journal entries is sent along with it. Anthropic does not use this data to train their models. If you would rather this did not happen, simply do not use the AI teacher &mdash; the timer, journal and statistics work without it, and nothing you write elsewhere in the app is sent anywhere unless you open a conversation with the teacher.
           </p>
         </section>
 

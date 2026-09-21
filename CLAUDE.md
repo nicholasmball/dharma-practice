@@ -9,8 +9,9 @@ A Buddhist meditation practice app built with Next.js, self-hosted on a Mac mini
 > Cloudflare tunnel + Access at `dharma.balla-bot.uk`, backed by local **Postgres 17 + PostgREST**,
 > with **Auth.js (Google sign-in)** replacing Supabase Auth. The old `buddha-balla.com` on Vercel and
 > the Supabase project were decommissioned in Mini move 11. Nightly DB backups go to the NAS.
-> The AI teacher still calls the **Anthropic API directly** — that key stays until Mini move 13 routes
-> AI through Balla Bot. Historical Supabase/Vercel details below are kept for reference only.
+> The AI teacher now routes through **Balla Bot's `dharma-llm` service** (Mini move 13, commit
+> 6066972); the direct Anthropic path survives only as a fallback behind `LLM_PROVIDER=anthropic`.
+> Historical Supabase/Vercel details below are kept for reference only.
 
 ## Table of Contents
 - [About the Developer](#about-the-developer)
@@ -35,8 +36,12 @@ A Buddhist meditation practice app built with Next.js, self-hosted on a Mac mini
 - Handle all setup and implementation
 - Explain every step clearly in plain English
 - Provide exact commands to run and specify where to run them
-- He's on Windows
-- **IMPORTANT: Never push changes without Nicholas confirming they work locally first.** Always ask him to test with `npm run dev` before committing/pushing.
+- He works from a Mac laptop; the app itself runs on the Mac mini
+- **IMPORTANT: Never release without Nicholas confirming the change first.** Note that
+  pushing to `mini-migration` IS the release — the mini picks it up within ~5 minutes. And
+  a laptop cannot run this app alone (see Development), so "test it locally first" no longer
+  means what it used to: testing that touches data, sign-in or the teacher has to happen on
+  the mini. Agree with him how a change will be checked before you push it.
 - He understands concepts well when explained, but don't assume prior knowledge of modern dev tooling
 
 ## Tech Stack
@@ -47,7 +52,7 @@ A Buddhist meditation practice app built with Next.js, self-hosted on a Mac mini
 - **Database:** Self-hosted PostgreSQL 17 on the Mac mini (loopback), data API via **PostgREST** (127.0.0.1:8097). *(was: Supabase)*
 - **Authentication:** **Auth.js (NextAuth) with Google sign-in**, app-minted PostgREST JWTs, invite-only email allowlist. *(was: Supabase Auth)*
 - **Email:** Resend (SMTP) — still sends from `buddha-balla.com`
-- **AI:** Anthropic Claude API (direct; stays until Mini move 13)
+- **AI:** Claude, reached via Balla Bot's local `dharma-llm` service (`LLM_PROVIDER=ballabot`); direct Anthropic API kept as a fallback
 - **PWA:** next-pwa (offline support, installable)
 - **Hosting:** **Mac mini** — Next.js via launchd (`com.dharma.web`), served through a **Cloudflare tunnel + Access**. *(was: Vercel)*
 - **Domain:** `dharma.balla-bot.uk` (Cloudflare-managed). *(old `buddha-balla.com` was on Namecheap → Vercel, now retired)*
@@ -88,9 +93,10 @@ src/
 │   ├── ReminderChecker.tsx  # Background reminder checker
 │   └── ThemeProvider.tsx    # Dark/light theme context
 ├── lib/
-│   ├── supabase/
-│   │   ├── client.ts        # Browser Supabase client
-│   │   └── server.ts        # Server Supabase client
+│   ├── auth/                # Auth.js helpers: allowlist, sign-in, PostgREST token, delete-user
+│   ├── postgrest/           # PostgREST client (mints a short-lived per-request JWT)
+│   ├── teacher/             # Teacher prompt, wording variants, stream markers (+ tests)
+│   ├── site-url.ts          # Public base URL
 │   └── types.ts             # TypeScript types
 └── middleware.ts            # Auth middleware (route protection)
 
@@ -152,10 +158,13 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 ## Key Features
 
 ### Authentication
-- Email/password signup with confirmation email
-- Login with "Forgot password?" link
-- **Password reset flow**: Request email → click link → set new password
-- Supabase Auth handles tokens and sessions
+- **Google sign-in only** — email/password signup and password reset were retired in the
+  mini migration. The `(auth)/signup`, `forgot-password` and `reset-password` routes are
+  historical.
+- **Invite-only**: the email must be in `AUTH_ALLOWED_EMAILS` *and* have a row in `auth.users`.
+- Auth.js (NextAuth) handles the session; the app mints a short-lived PostgREST JWT per
+  request (user UUID as `sub`, `role: authenticated`) so row-level security applies.
+- Cloudflare Access sits in front of the whole site as a second gate.
 
 ### Landing Page
 - Hero with "Start Your Practice" CTA
@@ -288,19 +297,46 @@ All tables have Row Level Security (RLS) enabled - users can only access their o
 
 ## Environment Variables
 
+Config lives in `.env.local` in the repo root **on the mini** (chmod 600, never committed).
+`.env.example` is the authoritative, commented list — check it rather than this summary.
+
 ```
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-ANTHROPIC_API_KEY=your_anthropic_api_key
-CLAUDE_MODEL=claude-opus-4-20250514  # Optional, defaults to claude-sonnet-4-20250514
+# Which LLM path the teacher uses
+LLM_PROVIDER=ballabot                    # or "anthropic" for the direct fallback
+
+# Balla Bot dharma-llm service (loopback on the mini)
+DHARMA_LLM_URL=http://127.0.0.1:8099
+DHARMA_LLM_TOKEN=...
+
+# Direct Anthropic fallback (only when LLM_PROVIDER=anthropic)
+ANTHROPIC_API_KEY=...
+
+# Data
+POSTGREST_URL=http://127.0.0.1:8097      # all app data
+POSTGREST_JWT_SECRET=...                 # signs the per-request JWT
+DATABASE_URL=postgres://dharma_owner:...@127.0.0.1:5432/dharma   # auth.users only
+
+# Auth.js / Google sign-in
+AUTH_SECRET=...
+AUTH_GOOGLE_ID=...
+AUTH_GOOGLE_SECRET=...
+AUTH_ALLOWED_EMAILS=a@example.com,b@example.com
+AUTH_URL=https://dharma.balla-bot.uk     # must be the public host, not loopback
+
+# Email
+RESEND_API_KEY=...
 ```
 
-**Available Claude models:**
-- `claude-opus-4-5-20251101` - Most capable, highest cost
-- `claude-opus-4-20250514` - Very capable, higher cost
-- `claude-sonnet-4-20250514` - Balanced (default)
-- `claude-haiku-3-5-20241022` - Fastest, lowest cost
+After editing `.env.local`, restart the app — a redeploy is not needed:
+`launchctl kickstart -k gui/$(id -u)/com.dharma.web`
+
+**Teacher models.** The two depths offered in Settings, per `TEACHER_MODEL_ALLOWLIST` in
+`src/app/api/chat/route.ts`:
+
+| Setting | Model |
+|---|---|
+| Balanced | `claude-sonnet-5` |
+| Deep | `claude-opus-5` |
 
 ## Design System
 
@@ -320,49 +356,163 @@ CSS variables defined in `globals.css` (dark theme default, light theme via `[da
 ## Development
 
 ```bash
-npm run dev      # Start dev server
-npm run build    # Build for production
-npm run start    # Start production server
+npm run dev                  # Dev server (Turbopack) on http://localhost:3000
+npm run build                # Production build (next build --webpack — webpack is required for the PWA service worker)
+npm run start                # Production server
+npm run lint                 # ESLint
+npm test                     # Unit tests (Vitest, single run)
+npm run test:watch           # Unit tests, watch mode
+npm run teacher-voice-test   # Ask the real teacher a fixed set of invented questions and score the replies
 ```
+
+### Important: a laptop cannot run this app on its own
+
+Everything except the static UI, the timer and the PWA shell depends on services that
+listen **only on loopback on the Mac mini**. Running `npm run dev` on a laptop with no
+connection to the mini gives you a shell with no data, no sign-in and no teacher.
+
+The four mini-side dependencies:
+
+| Needs the mini | Why | Without it |
+|---|---|---|
+| Postgres 17 (`127.0.0.1:5432`, db `dharma`) | `DATABASE_URL`. Read directly only for `auth.users` (not exposed via PostgREST) — email→UUID lookup and account deletion | `src/lib/auth/delete-user.ts` throws `DATABASE_URL is not set` |
+| PostgREST (`127.0.0.1:8097`) | `POSTGREST_URL`. **All** app data reads/writes | `src/lib/postgrest/client.ts` throws; no sessions, journal, settings or conversations |
+| Auth.js + Google sign-in | `AUTH_SECRET`, `AUTH_GOOGLE_ID/SECRET`, `AUTH_ALLOWED_EMAILS`, `AUTH_URL`. `AUTH_URL` must be the public hostname — from a loopback origin Google rejects with `redirect_uri_mismatch`. Also needs a seeded `auth.users` row, so it depends on Postgres too | Cannot sign in |
+| Balla Bot `dharma-llm` (`127.0.0.1:8099`) | `LLM_PROVIDER=ballabot`, `DHARMA_LLM_URL`, `DHARMA_LLM_TOKEN` | Teacher chat is dead (unless you set `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY`) |
+
+**So: do your testing on the mini, not on a laptop.** This is why the old "test locally
+with `npm run dev` before pushing" rule no longer works as written. What a laptop *can*
+do alone: edit code, `npm run lint`, `npm test`, `npm run build`, and check static UI.
+
+Reaching the mini's loopback services from a laptop needs an SSH tunnel, e.g.
+`ssh -N -L 8097:127.0.0.1:8097 -L 5432:127.0.0.1:5432 -L 8099:127.0.0.1:8099 <mini-host>`.
+Be aware the tunnel has been observed to die right after a single successful long call —
+`scripts/teacher-voice-test.ts` makes one bounded reconnect attempt per call if you set
+`DHARMA_LLM_TUNNEL_CMD` to the command that reopens it. Running on the mini avoids all this.
+
+### Testing before a release
+
+1. On a laptop or the mini: `npm run lint`, `npm test`, `npm run build`.
+2. Teacher wording changes only: `npm run teacher-voice-test` **on the mini** (it needs
+   `dharma-llm` on 8099). Change one thing at a time and re-run. Test input is an invented
+   practitioner (`scripts/teacher-voice-fixtures.ts`) — it never reads the real database.
+   Output goes to the git-ignored `teacher-voice-output/`.
+3. Confirm with Nicholas before pushing to the deploy branch — pushing *is* releasing (below).
 
 ## Deployment
 
-Deployed on Vercel at buddha-balla.com. Push to `main` branch triggers automatic deployment.
+Self-hosted on the Mac mini. **There is no Vercel and no push-to-`main` deploy.**
+
+- **Deploy branch: `mini-migration`** (not `main`).
+- **Pushing to that branch releases within ~5 minutes.** The launchd job
+  `com.dharma.updatecheck` runs `scripts/mini/deploy.sh` every 300s.
 
 ```bash
-git add .
-git commit -m "Description of changes"
-git push
+git push origin mini-migration   # this is the release
 ```
+
+`scripts/mini/deploy.sh` then:
+
+1. Takes a lock (`~/Library/Logs/dharma/.deploy.lock`; stale locks reclaimed after 30 min).
+2. Stands down unless the mini is checked out on `mini-migration`.
+3. `git fetch origin mini-migration`; stands down if nothing moved.
+4. **Aborts if the mini's working tree is dirty** — it never resets or cleans.
+5. `git merge --ff-only` — aborts on divergence, never forces.
+6. `npm ci`
+7. `npm run build`
+8. `launchctl kickstart -k gui/$(id -u)/com.dharma.web`
+9. Polls `http://127.0.0.1:8098/api/health` every 5s (up to 300s); fails if never healthy.
+
+Run it by hand on the mini with `scripts/mini/deploy.sh`, or `DRY_RUN=1 scripts/mini/deploy.sh`
+to see what it would do.
+
+### How to undo a release
+
+**Code — revert and push. Do not check out an old commit on the mini:** that leaves it in
+a detached HEAD, and `deploy.sh` stands down when it isn't on the deploy branch, so the
+mini silently stops auto-updating.
+
+```bash
+git revert <bad-sha>          # or: git revert --no-commit <bad-sha>..HEAD
+git push origin mini-migration
+```
+
+The 5-minute timer picks it up, rebuilds and restarts. To apply it immediately, run
+`scripts/mini/deploy.sh` on the mini.
+
+**Database** — `scripts/mini/restore.sh <public_dump.sql> <auth_users.csv>`. Note it is
+written for the Supabase-shaped export, **not** the nightly `pg_dump -Fc` files; restoring
+one of those is a `pg_restore`. It drops and recreates the `public`, `auth` and
+`extensions` schemas in `dharma`, and never touches the `favourites` database.
+
+**Services** — `scripts/mini/uninstall.sh` boots out all four `com.dharma.*` jobs and
+removes their plists. It leaves the repo, `.env.local` and logs alone. `DRY_RUN=1` supported.
+
+### The services on the mini
+
+| launchd label | What it does | Schedule |
+|---|---|---|
+| `com.dharma.web` | Next.js, `npm run start -- -H 127.0.0.1 -p 8098`. KeepAlive on | Always |
+| `com.dharma.updatecheck` | Runs `deploy.sh` | Every 300s |
+| `com.dharma.healthcheck` | Runs `healthcheck.sh` | Every 600s |
+| `com.dharma.dbbackup` | Runs `backup-db.sh` | Daily 03:40 |
+| `com.dharma.postgrest` | PostgREST on 8097 (owned outside this repo) | Always |
+
+The `com.dharma.*` prefix is deliberate, so other projects' deploy scripts can't clobber
+these jobs.
+
+- Install / update the plists: `scripts/mini/install.sh` (copies `com.dharma.web` and
+  `com.dharma.updatecheck` and **prints** the bootstrap commands rather than running them;
+  the dbbackup and healthcheck plists must be copied and bootstrapped by hand — see the
+  commands in their own plist headers).
+- Status at a glance: `scripts/mini/install.sh --status`
+- One-off health check: `scripts/mini/healthcheck.sh`
+- Restart the app: `launchctl kickstart -k gui/$(id -u)/com.dharma.web`
+
+**Ports:** web 8098 · PostgREST 8097 · Postgres 5432 · `dharma-llm` 8099.
+`/api/health` is unauthenticated and returns `{ok:true, ts}` — it is what launchd and the
+Cloudflare tunnel probe.
+
+**Logs:** `~/Library/Logs/dharma/` — `web.log`, `deploy.log`, `healthcheck.log`,
+`backup-db.log`, `dbbackup.launchd.log`, `healthcheck.launchd.log`.
 
 ### Services Configuration
 
-**Vercel:**
-- **Dashboard:** https://vercel.com/nick-balls-projects-f566c089/dharma-practice
-- Environment variables set in dashboard
-- Custom domain: buddha-balla.com
+**Cloudflare:** tunnel + Access in front of `dharma.balla-bot.uk`; invite-only via Google
+sign-in plus the `AUTH_ALLOWED_EMAILS` allowlist. Cloudflare is also the DNS registrar.
 
-**Supabase:**
-- **Dashboard:** https://supabase.com/dashboard/project/reghijrbzanqqmkxzmev
-- Auth redirect URLs include buddha-balla.com
-- Custom SMTP via Resend for emails
+**Google Cloud (OAuth):** the client ID/secret behind Google sign-in. The authorised
+redirect URI must match `AUTH_URL` (`https://dharma.balla-bot.uk`).
 
-**Resend:**
-- SMTP for transactional emails (signup confirmation, password reset)
-- Domain: buddha-balla.com verified
+**Resend:** SMTP for transactional email; still sends from `buddha-balla.com`.
 
-**Namecheap:**
-- Domain registrar for buddha-balla.com
-- DNS records point to Vercel + Resend
+**Anthropic:** the teacher reaches Claude via Balla Bot's `dharma-llm` service
+(`LLM_PROVIDER=ballabot`). `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` remains as a
+fallback path in the code.
+
+*Retired: Vercel, Supabase, Namecheap, and the `buddha-balla.com` domain (Mini move 11).*
 
 ## Database Changes
 
-To modify the database schema:
+Postgres 17 runs on the mini (loopback, database `dharma`, port 5432), with PostgREST on
+8097 in front of it. Local `trust` auth, so the scripts connect without a password.
 
-1. Go to **Supabase Dashboard** → **SQL Editor**
-2. Write and run your SQL
-3. Update `CLAUDE.md` database schema section
-4. Update `src/lib/types.ts` if adding new fields
+Row-level security uses an `auth.uid()` shim that reads `request.jwt.claims -> sub`. The
+app mints a short-lived HS256 token per request with the user's UUID as `sub` and
+`role: authenticated`, signed with `POSTGREST_JWT_SECRET`.
+
+> **There is no migrations workflow in this repo** — no migrations folder, no SQL files in
+> git. Schema changes are applied by hand. This is a known gap; a migrations folder would
+> be an improvement.
+
+To change the schema, **on the mini**:
+
+1. `psql -d dharma` and run your DDL.
+2. Reload PostgREST's schema cache, or it will keep serving the old shape:
+   `launchctl kickstart -k gui/$(id -u)/com.dharma.postgrest`
+3. Update the Database Schema section of this file.
+4. Update `src/lib/types.ts` if you added or changed fields.
+5. Take a fresh backup: `scripts/mini/backup-db.sh`
 
 **Common operations:**
 ```sql
@@ -378,11 +528,44 @@ SELECT * FROM information_schema.table_constraints WHERE table_name = 'your_tabl
 
 ## Troubleshooting
 
-### "Column doesn't exist" error
-Run the missing migration in Supabase SQL Editor. Check the Database Schema section for expected columns.
+### "Column doesn't exist" error, or a new column isn't visible
+Usually PostgREST serving a stale schema cache rather than a missing column. Reload it:
+`launchctl kickstart -k gui/$(id -u)/com.dharma.postgrest`. If the column really is
+missing, apply the DDL by hand (see Database Changes).
+
+### The site is down
+1. `scripts/mini/install.sh --status` — launchd state, pid, last exit, branch and SHA, plus a health probe.
+2. `curl http://127.0.0.1:8098/api/health` on the mini — expect `{"ok":true,...}`.
+3. `tail -50 ~/Library/Logs/dharma/web.log`
+4. Restart: `launchctl kickstart -k gui/$(id -u)/com.dharma.web`
+5. If the app is fine on 8098 but not reachable from outside, the problem is the
+   Cloudflare tunnel or Access, not the app.
+
+### A push didn't go live
+`tail -50 ~/Library/Logs/dharma/deploy.log`. `deploy.sh` stands down silently when:
+the mini isn't on `mini-migration` (including detached HEAD), `git fetch` failed, the
+working tree on the mini is dirty, or the merge wouldn't fast-forward. Fix the cause and
+either wait 5 minutes or run `scripts/mini/deploy.sh` by hand.
+
+### Sign-in fails / redirect_uri_mismatch
+`AUTH_URL` must be `https://dharma.balla-bot.uk`, and the same URI must be registered in
+the Google Cloud OAuth client. From a loopback origin Auth.js builds the callback from
+`localhost:8098` and Google rejects it. Also check the email is in `AUTH_ALLOWED_EMAILS`
+**and** has a row in `auth.users`.
+
+### The teacher doesn't reply
+Check `dharma-llm` is up on the mini (`127.0.0.1:8099`) and that `DHARMA_LLM_URL` and
+`DHARMA_LLM_TOKEN` are set in `.env.local`. Replies stream via markers — see
+`src/lib/teacher/stream-markers.ts`, which also notes corrupted replies observed right
+after an SSH tunnel dropped and reopened.
+
+### Environment variable not working
+Config lives in `.env.local` in the repo root on the mini (chmod 600, never committed).
+Edit it there, then `launchctl kickstart -k gui/$(id -u)/com.dharma.web`. A redeploy is
+not required, but a restart is.
 
 ### Icon/favicon not updating
-Hard refresh: `Ctrl+Shift+R` (Windows) or `Cmd+Shift+R` (Mac). May also need to clear browser cache.
+Hard refresh: `Cmd+Shift+R` (Mac) or `Ctrl+Shift+R` (Windows). May also need to clear browser cache.
 
 ### PWA not updating / old version cached
 1. Open DevTools → Application → Service Workers
@@ -395,32 +578,44 @@ A database constraint is blocking the value. Find and drop the constraint:
 ALTER TABLE table_name DROP CONSTRAINT constraint_name;
 ```
 
-### Environment variable not working in production
-1. Add it in Vercel Dashboard → Settings → Environment Variables
-2. Redeploy (or push a new commit)
-
-### Auth redirect not working
-Check Supabase Dashboard → Authentication → URL Configuration. Ensure your domain is in the allowed redirect URLs.
-
 ## Backups
 
 **Critical files (losing these = cannot update Android app):**
 - `signing.keystore` — stored securely outside the repo (Google Drive)
 - `signing-key-info.txt` — stored securely outside the repo (Google Drive)
 
+**Database — backed up nightly, automatically.** `scripts/mini/backup-db.sh` runs at 03:40
+(`com.dharma.dbbackup`), 10 minutes after the Favourites backup so the NAS isn't contended.
+
+- Destination: `/Volumes/Public/dharma-backups` on the NAS (`DHARMA_BACKUP_DIR`). The
+  script verifies the share is actually mounted first — otherwise backups land silently on
+  local disk.
+- `pg_dump -Fc -d dharma` to a temp file, sanity-checked (size, and `pg_restore -l` listing
+  at least 4 tables) before being moved into place as `dharma-YYYY-MM-DD.dump`.
+- Sundays also write `globals-YYYY-MM-DD.sql` (`pg_dumpall --globals-only`).
+- Keeps the newest 30 dumps and 5 globals.
+- Failures raise a Telegram alert (`DHARMA_NOTIFY=0` disables). Log: `~/Library/Logs/dharma/backup-db.log`.
+- Prove it works without writing to the NAS: `scripts/mini/backup-db.sh --dry-run`.
+- Restore: see "How to undo a release" above.
+
+`scripts/mini/healthcheck.sh` (every 600s) also alerts if the newest dump is older than 26
+hours — which is how an unmounted NAS gets noticed.
+
 **Important but recoverable:**
-- `.env.local` — can recreate from Supabase/Anthropic dashboards, but annoying
-- Supabase data — can export via Settings > Data Export, but no automated backups on free tier
+- `.env.local` on the mini — not in git, and not fully recoverable from any dashboard.
+  Worth keeping a copy somewhere safe.
 
 **Backed up automatically:**
 - Source code — Git + GitHub
-- Vercel config — tied to GitHub repo
+- Database — nightly to the NAS, as above
 
 ## Costs
 
-- **Vercel:** Free tier (100GB bandwidth)
-- **Supabase:** Free tier (500MB database, 50k MAU)
+- **Mac mini hosting:** electricity only (self-hosted)
+- **Cloudflare:** free tier (tunnel + Access)
 - **Resend:** Free tier (100 emails/day)
-- **Claude API:** Pay-per-use (~$3-15/month typical)
-- **Domain:** ~$12/year
+- **Claude API:** Pay-per-use (~$3-15/month typical), billed via the key Balla Bot's `dharma-llm` uses
+- **Domain:** `balla-bot.uk`, ~$12/year
 - **Google Play:** $25 one-time developer fee
+
+*No longer paying for / using: Vercel, Supabase, Namecheap.*

@@ -30,18 +30,35 @@ describe('getVariant', () => {
     }
   })
 
-  it('approved (shipped) and fix-notes-turn (the tested candidate it was promoted from) build identical output, turn by turn', () => {
+  it('approved (shipped) and fix-ai-answer (the latest tested candidate) build identical output, turn by turn', () => {
     // Guards against silent drift between src/lib/teacher/prompt.ts (what
-    // the route ships) and the fix-notes-turn variant this was tested as
-    // (docs/teacher-voice-approved-wording.md, "Changes after testing").
+    // the route ships) and the variant it was promoted from
+    // (docs/teacher-voice-approved-wording.md). The pairing moves forward
+    // each time a fix is promoted — it was fix-notes-turn before fix 4.
     const approved = getVariant('approved')
-    const fixNotesTurn = getVariant('fix-notes-turn')
+    const fixAiAnswer = getVariant('fix-ai-answer')
     const background = {
       sessions: [{ practice_type: 'shamatha', duration_seconds: 600, started_at: '2026-09-18T08:00:00Z' }],
       entries: [],
     }
-    expect(approved.buildFullSystem(background, false)).toBe(fixNotesTurn.buildFullSystem(background, false))
-    expect(approved.buildFullSystem(background, true)).toBe(fixNotesTurn.buildFullSystem(background, true))
+    expect(approved.buildFullSystem(background, false)).toBe(fixAiAnswer.buildFullSystem(background, false))
+    expect(approved.buildFullSystem(background, true)).toBe(fixAiAnswer.buildFullSystem(background, true))
+  })
+
+  it('fix-ai-answer differs from fix-notes-turn only in the "am I talking to an AI?" sentence', () => {
+    // Fix 4 is meant to be a one-sentence change layered on fix-notes-turn,
+    // so a regression can be traced to it and nothing else.
+    const before = getVariant('fix-notes-turn').systemPromptOnly
+    const after = getVariant('fix-ai-answer').systemPromptOnly
+    expect(after).not.toBe(before)
+    expect(before).toContain('answer honestly in a sentence and carry on as their teacher')
+    expect(after).not.toContain('answer honestly in a sentence and carry on as their teacher')
+    expect(after).toContain('in one sentence and not a word more')
+    // Everything either side of that one sentence is untouched.
+    const marker = 'If someone sincerely asks whether they are talking with an AI,'
+    expect(before.slice(0, before.indexOf(marker))).toBe(after.slice(0, after.indexOf(marker)))
+    const tail = 'Write the way you speak:'
+    expect(before.slice(before.indexOf(tail))).toBe(after.slice(after.indexOf(tail)))
   })
 
   it('approved-v1 is frozen and distinct from approved (the shipped, post-fix wording)', () => {

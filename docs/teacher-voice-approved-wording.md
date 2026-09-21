@@ -78,3 +78,32 @@ Book-use (Balanced, no background, the everyday/lookup/judgement matrix): everyd
 **Still imperfect:** the mechanical notes fix relies on the model actually reading and obeying the quieter follow-up framing rather than on any hard mechanism preventing it from re-surfacing old data — a determined or very different model could still slip past it, and this was only tested on the two shipped depths (Balanced/Deep) with one invented six-turn conversation. The `mentionsNotes` keyword detector under-counts spelled-out ordinal dates ("the fourteenth") — real mentions were confirmed by hand throughout, but an automated re-run of old data would need that pattern added to trust the number alone.
 
 Total across the whole 20 Sep testing day: roughly 340 live calls (the original ~140-reply round, this document's earlier three-fix testing at 73 calls, and this final mechanical-fix + combined-validation round at 119 calls, plus a 6-turn post-ship sanity check on the live `approved` variant), all backend `ballabot`, 0 permanent failures, 0 secrets logged.
+
+## Fix 4 — the "am I talking to an AI?" answer (21 Sep 2026)
+
+Follow-up 1 of task 87fbbfb3, after the new voice went live. The shipped wording already asked for an honest answer "in a sentence", but the first live round produced 2–4 sentences, and one Deep reply described the teacher as "built on Claude" — naming the machinery, which the same paragraph forbids as a subject.
+
+**There was no test question for this** — the problem had only ever been noticed by eye. One was added (`am_i_an_ai` in `scripts/teacher-voice-questions.ts`), deliberately pairing the AI question with a practice question in the same message ("…and while I've got you, I keep losing the thread of the breath after about five minutes") so the "carry on as their teacher" half of the instruction is measurable too, not just the honesty half.
+
+**The change**, one sentence in the "You speak as the teacher throughout" paragraph:
+
+> ~~If someone sincerely asks whether they are talking with an AI, answer honestly in a sentence and carry on as their teacher.~~
+>
+> If someone sincerely asks whether they are talking with an AI, say plainly that you are, in one sentence and not a word more — never naming the company behind you or the model you run on, and never explaining how any of it works, because that is machinery — and then carry straight on with the rest of your reply as their teacher, answering whatever else they asked exactly as you would have.
+
+Bottled as `fix-ai-answer` in `variants.ts`, layered on `fix-notes-turn` so a regression traces to this change alone. A unit test asserts it differs from `fix-notes-turn` in that sentence and nowhere else (prefix and suffix compared verbatim), and the existing drift test now pairs `approved` with `fix-ai-answer`.
+
+**Result** (4 live calls, backend `ballabot`, both depths, `approved-v1` vs `fix-ai-answer`):
+
+| Variant | Model | AI answer | Machinery named? | Words | Ends on a question |
+|---|---|---|---|---|---|
+| approved-v1 | Deep | 3 sentences | **Yes — "a Claude model"** | 289 | ✓ |
+| fix-ai-answer | Deep | 1 sentence — *"I'm an AI — you're right to ask straight out, and you deserve a straight answer."* | No | 276 | ✓ |
+| approved-v1 | Balanced | 3 sentences | No | 296 | ✓ |
+| fix-ai-answer | Balanced | 2 short sentences — *"Yes, you're talking with an AI. And it's a fair question to ask straight out."* | No | 270 | ✓ |
+
+Both variants then answered the practice question properly and at length; no lists or headers either side; word counts came down slightly. **Passes. Shipped.**
+
+**Still imperfect:** Balanced gives two short sentences rather than the one asked for. The second sentence is about the asking, not about machinery, so it does not reintroduce the problem the fix targets — but "one sentence and not a word more" is not being followed to the letter, and a firmer wording would be the next thing to try if it ever matters.
+
+**Expected, not a regression:** the scorecard reports 1 banned-phrase hit on `fix-ai-answer`/Deep — the phrase is `i'm an ai`, which is exactly the honest sentence the owner decided to keep. Balla Bot's own check still bans it; adjusting that check is the matching half of this follow-up and is tracked on the same card.
