@@ -58,6 +58,14 @@ describe('bannedPhraseHits', () => {
   it('is empty for an ordinary teacherly reply', () => {
     expect(bannedPhraseHits('Ah, that is a lovely question. What do you notice?')).toEqual([])
   })
+  it('allows the honest one-sentence answer to "am I talking to an AI?"', () => {
+    expect(bannedPhraseHits("I'm an AI — you're right to ask straight out.")).toEqual([])
+    expect(bannedPhraseHits('Yes, you are talking with an AI. I am an AI, not a person.')).toEqual([])
+  })
+  it('catches naming the vendor or model behind the teacher', () => {
+    expect(bannedPhraseHits("You're talking to an AI — a Claude model.")).toContain('claude')
+    expect(bannedPhraseHits('I was built by Anthropic.')).toContain('anthropic')
+  })
 })
 
 describe('quotedAttributionWithoutLookup', () => {

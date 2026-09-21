@@ -21,10 +21,14 @@ export interface ReplyMeasures {
 // balla-bot's own BANNED_PHRASES (tests/test_dharma_llm_library_matrix.py,
 // read read-only) so the two checks agree. Checked case-insensitively as
 // substrings.
+//
+// Saying it is an AI is NOT banned (owner decision, 20 Sep 2026): asked
+// sincerely, the teacher answers honestly in one sentence. What is banned is
+// the machinery/vendor talk that was the real complaint ("built on Claude") —
+// hence 'claude' and 'anthropic', matching balla-bot commit 2ad1d4b.
 const BANNED_PHRASES = [
-  'as an ai',
-  "i'm an ai",
-  'i am an ai',
+  'claude',
+  'anthropic',
   'as a language model',
   'language model',
   'large language model',
