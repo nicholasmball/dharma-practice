@@ -38,7 +38,7 @@
 #      prints the JSON it gets back.
 #
 # Env vars:
-#   DEPLOY_BRANCH      Branch to track (default: mini-migration)
+#   DEPLOY_BRANCH      Branch to track (default: main)
 #   DHARMA_STALE_LOCK_SEC  Age in seconds after which an abandoned lock is
 #                      force-reclaimed (default: 1800 = 30 minutes)
 #   DRY_RUN            Set to 1 to print what would run instead of running
@@ -55,7 +55,7 @@ LOG_DIR="$HOME/Library/Logs/dharma"
 PORT=8098
 HEALTH_URL="http://127.0.0.1:${PORT}/api/health"
 
-DEPLOY_BRANCH="${DEPLOY_BRANCH:-mini-migration}"
+DEPLOY_BRANCH="${DEPLOY_BRANCH:-main}"
 STALE_LOCK_SEC="${DHARMA_STALE_LOCK_SEC:-1800}"
 DRY_RUN="${DRY_RUN:-0}"
 LOCK_DIR="$LOG_DIR/.deploy.lock"

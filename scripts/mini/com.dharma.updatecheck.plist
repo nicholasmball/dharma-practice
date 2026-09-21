@@ -9,7 +9,7 @@
   directory.
 
   Every 300s runs scripts/mini/deploy.sh, which takes a staleness-aware
-  lock, fetches DEPLOY_BRANCH (default: mini-migration), and — if origin has
+  lock, fetches DEPLOY_BRANCH (default: main), and — if origin has
   moved on and the working tree is clean — fast-forwards, rebuilds, and
   restarts com.dharma.web. RunAtLoad is false — no need to deploy the
   instant the mini boots, the KeepAlive web job already starts what's on

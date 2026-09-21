@@ -38,7 +38,7 @@ A Buddhist meditation practice app built with Next.js, self-hosted on a Mac mini
 - Provide exact commands to run and specify where to run them
 - He works from a Mac laptop; the app itself runs on the Mac mini
 - **IMPORTANT: Never release without Nicholas confirming the change first.** Note that
-  pushing to `mini-migration` IS the release — the mini picks it up within ~5 minutes. And
+  pushing to `main` IS the release — the mini picks it up within ~5 minutes. And
   a laptop cannot run this app alone (see Development), so "test it locally first" no longer
   means what it used to: testing that touches data, sign-in or the teacher has to happen on
   the mini. Agree with him how a change will be checked before you push it.
@@ -401,21 +401,22 @@ Be aware the tunnel has been observed to die right after a single successful lon
 
 ## Deployment
 
-Self-hosted on the Mac mini. **There is no Vercel and no push-to-`main` deploy.**
+Self-hosted on the Mac mini. **There is no Vercel.**
 
-- **Deploy branch: `mini-migration`** (not `main`).
+- **Deploy branch: `main`.** (Until 21 Sep 2026 it was `mini-migration`; that branch is
+  retired — don't push to it.)
 - **Pushing to that branch releases within ~5 minutes.** The launchd job
   `com.dharma.updatecheck` runs `scripts/mini/deploy.sh` every 300s.
 
 ```bash
-git push origin mini-migration   # this is the release
+git push origin main   # this is the release
 ```
 
 `scripts/mini/deploy.sh` then:
 
 1. Takes a lock (`~/Library/Logs/dharma/.deploy.lock`; stale locks reclaimed after 30 min).
-2. Stands down unless the mini is checked out on `mini-migration`.
-3. `git fetch origin mini-migration`; stands down if nothing moved.
+2. Stands down unless the mini is checked out on `main`.
+3. `git fetch origin main`; stands down if nothing moved.
 4. **Aborts if the mini's working tree is dirty** — it never resets or cleans.
 5. `git merge --ff-only` — aborts on divergence, never forces.
 6. `npm ci`
@@ -434,7 +435,7 @@ mini silently stops auto-updating.
 
 ```bash
 git revert <bad-sha>          # or: git revert --no-commit <bad-sha>..HEAD
-git push origin mini-migration
+git push origin main
 ```
 
 The 5-minute timer picks it up, rebuilds and restarts. To apply it immediately, run
@@ -543,7 +544,7 @@ missing, apply the DDL by hand (see Database Changes).
 
 ### A push didn't go live
 `tail -50 ~/Library/Logs/dharma/deploy.log`. `deploy.sh` stands down silently when:
-the mini isn't on `mini-migration` (including detached HEAD), `git fetch` failed, the
+the mini isn't on `main` (including detached HEAD), `git fetch` failed, the
 working tree on the mini is dirty, or the merge wouldn't fast-forward. Fix the cause and
 either wait 5 minutes or run `scripts/mini/deploy.sh` by hand.
 
