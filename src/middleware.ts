@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
   })
 
   // Only check auth for routes that actually need it (protected + auth pages)
-  const protectedRoutes = ['/dashboard', '/timer', '/journal', '/stats', '/teacher', '/settings']
+  const protectedRoutes = ['/dashboard', '/timer', '/journal', '/diary', '/stats', '/teacher', '/settings']
   const authRoutes = ['/login', '/signup', '/forgot-password', '/reset-password']
   const pathname = request.nextUrl.pathname
   const isHome = pathname === '/'

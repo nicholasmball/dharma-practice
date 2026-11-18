@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diary tab mock</title>
+<style>
+  /* App design tokens, copied from src/app/globals.css */
+  :root {
+    --background: #1a1f2e; --foreground: #e0e4eb;
+    --accent: #c9a84c; --accent-hover: #a68a3a;
+    --surface: #232938; --surface-hover: #2d3548;
+    --border: #3a4358; --muted: #8b92a5;
+    --error: #e05555; --success: #55b085;
+  }
+  [data-theme="light"] {
+    --background: #f5f5f0; --foreground: #1a1f2e;
+    --accent: #b8941f; --accent-hover: #9a7a18;
+    --surface: #ffffff; --surface-hover: #f0f0eb;
+    --border: #d4d4cf; --muted: #6b7280;
+    --error: #dc2626; --success: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--background); }
+  body { margin: 0; color: var(--foreground); line-height: 1.6;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  a { color: var(--accent); }
+  button { font: inherit; cursor: pointer; }
+
+  /* Mock document chrome (not part of the design) */
+  .doc { max-width: 1200px; margin: 0 auto; padding: 32px 16px 80px; }
+  .doc h1 { font-weight: 300; font-size: 1.9rem; margin: 0 0 6px; }
+  .doc > p.lead { color: var(--muted); max-width: 70ch; margin: 0 0 12px; }
+  .doc h2.sec { font-size: 1rem; font-weight: 500; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted); margin: 48px 0 12px; border-top: 1px solid var(--border); padding-top: 20px; }
+  .note { font-size: .85rem; color: var(--muted); max-width: 75ch; }
+  .toggle { position: fixed; top: 12px; right: 12px; z-index: 99; padding: 6px 12px; border-radius: 8px;
+    background: var(--surface); color: var(--foreground); border: 1px solid var(--border); }
+
+  /* App frame: sidebar on desktop, bottom bar on phone */
+  .frame { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; background: var(--background); position: relative; }
+  .desk { display: flex; min-height: 760px; }
+  .side { width: 80px; background: var(--surface); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; align-items: center; padding: 24px 0; flex-shrink: 0; }
+  .logo { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); opacity: .6; margin-bottom: 32px; }
+  .nav { display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 12px; margin-bottom: 8px; border-radius: 12px; color: var(--muted); text-decoration: none; }
+  .nav .i { font-size: 1.25rem; line-height: 1.2; }
+  .nav .l { font-size: .75rem; margin-top: 4px; }
+  .nav.on { color: var(--accent); background: rgba(201,168,76,.10); }
+  .main { padding: 32px; flex: 1; min-width: 0; max-width: 1120px; }
+
+  .phone { width: 375px; max-width: 100%; height: 780px; display: flex; flex-direction: column; }
+  .phone .main { padding: 16px; overflow-y: auto; flex: 1; }
+  .bar { height: 64px; background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-evenly; padding: 0 4px; flex-shrink: 0; }
+  .bar .nav { padding: 6px; margin: 0; min-width: 0; }
+  .bar .nav .i { font-size: 1.125rem; }
+  .bar .nav .l { font-size: 9px; margin-top: 2px; }
+
+  /* App components (same values the pages use inline) */
+  .h1 { font-size: 1.875rem; font-weight: 300; margin: 0 0 8px; }
+  .sub { color: var(--muted); margin: 0; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; }
+  .row-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .h2 { font-size: 1.125rem; font-weight: 500; margin: 0 0 16px; }
+  .stack { display: flex; flex-direction: column; gap: 28px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .stat { padding: 20px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; }
+  .stat .n { font-size: 1.875rem; font-weight: 300; color: var(--accent); margin: 0; line-height: 1.2; }
+  .stat .t { font-size: .875rem; color: var(--muted); margin: 4px 0 0; }
+  .phone .stats { gap: 8px; }
+  .phone .stat { padding: 14px 6px; }
+  .phone .stat .n { font-size: 1.5rem; }
+  .phone .stat .t { font-size: .75rem; }
+
+  .two { display: grid; grid-template-columns: 1.35fr 1fr; gap: 24px; align-items: start; }
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .sess { display: flex; gap: 14px; align-items: flex-start; }
+  .date { width: 48px; flex-shrink: 0; text-align: center; border: 1px solid var(--border); border-radius: 10px; padding: 4px 0; }
+  .date .d { font-size: 1.25rem; font-weight: 300; line-height: 1.1; display: block; }
+  .date .m { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; display: block; }
+  .who { font-weight: 500; margin: 0; }
+  .meta { font-size: .875rem; color: var(--muted); margin: 0; }
+  .kind { display: inline-block; font-size: .7rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); margin-left: 6px; vertical-align: 2px; }
+  .grow { flex: 1; min-width: 0; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .btn { padding: 8px 14px; border-radius: 10px; font-size: .875rem; border: 1px solid var(--border); background: transparent; color: var(--foreground); text-decoration: none; }
+  .btn.primary { background: var(--accent); color: var(--background); border-color: var(--accent); font-weight: 600; }
+  .btn.quiet { color: var(--muted); border-color: transparent; padding-left: 6px; padding-right: 6px; }
+  .done { color: var(--success); font-size: .875rem; }
+  .wait { border-color: var(--accent); border-left-width: 3px; }
+  .link { font-size: .875rem; color: var(--accent); text-decoration: none; }
+
+  .tabs { display: inline-flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+  .tabs span { padding: 6px 14px; font-size: .875rem; color: var(--muted); }
+  .tabs span.on { background: var(--surface-hover); color: var(--foreground); }
+
+  .cal { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .cal th { font-size: .7rem; font-weight: 500; color: var(--muted); padding: 4px 0; }
+  .cal td { height: 54px; vertical-align: top; border: 1px solid var(--border); padding: 4px; font-size: .8rem; color: var(--muted); }
+  .cal td.today { outline: 2px solid var(--accent); outline-offset: -2px; color: var(--foreground); }
+  .cal td.out { opacity: .35; }
+  .pip { display: block; margin-top: 2px; font-size: .68rem; line-height: 1.2; color: var(--foreground);
+    background: rgba(201,168,76,.15); border-left: 2px solid var(--accent); border-radius: 3px; padding: 1px 3px;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+  .teach { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .teach:last-child { border-bottom: 0; }
+  .teach .c { color: var(--accent); font-size: 1.25rem; font-weight: 300; }
+  .foot { font-size: .8rem; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .tip { padding: 16px 20px; background: var(--surface); border: 1px solid var(--accent); border-left-width: 3px; border-radius: 12px; font-size: .875rem; color: var(--muted); }
+
+  .field { display: block; width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border); background: var(--background); color: var(--foreground); font: inherit; }
+  label.f { display: block; font-size: .875rem; margin: 0 0 6px; }
+  .chip { display: inline-block; padding: 4px 10px; border-radius: 999px; background: rgba(201,168,76,.12); color: var(--accent); font-size: .8rem; margin-right: 6px; }
+
+  .grid-states { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+  @media (max-width: 900px) {
+    .two { grid-template-columns: 1fr; }
+    .desk .side { display: none; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<button class="toggle" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'">Light / dark</button>
+
+<div class="doc">
+  <h1>Diary tab: design mock</h1>
+  <p class="lead">A new Diary tab listing Nick's sessions with Michael Taft, Vince Horn and Emily Horn, and the Friday Pragmatic Dharma teacher training. All dates, times and counts here are invented for the mock. Balla Bot supplies the session list. The app shows the list, counts sessions, and lets him write up or log a sit after each one. Reminders still come from Balla Bot on Telegram, so the app sends no alerts of its own.</p>
+  <p class="note">"Today" in this mock is Wed 13 Mar 2030. Uses the app's own colours, card shapes and navigation. Use the button at the top right to switch to the light theme.</p>
+
+  <!-- ============ 1. DESKTOP ============ -->
+  <h2 class="sec">1 · Diary tab on a computer</h2>
+  <div class="frame desk">
+    <nav class="side">
+      <div class="logo"></div>
+      <a class="nav"><span class="i">⌂</span><span class="l">Home</span></a>
+      <a class="nav"><span class="i">◯</span><span class="l">Meditate</span></a>
+      <a class="nav"><span class="i">✎</span><span class="l">Journal</span></a>
+      <a class="nav on"><span class="i">▦</span><span class="l">Diary</span></a>
+      <a class="nav"><span class="i">◫</span><span class="l">Stats</span></a>
+      <a class="nav"><span class="i">◈</span><span class="l">Teacher</span></a>
+      <a class="nav"><span class="i">⚙</span><span class="l">Settings</span></a>
+    </nav>
+    <div class="main">
+      <div class="stack">
+        <div>
+          <h1 class="h1">Diary</h1>
+          <p class="sub">Your sessions with your teachers, from your Google Calendar.</p>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><p class="n">4</p><p class="t">Sessions this month</p></div>
+          <div class="stat"><p class="n">19</p><p class="t">This year</p></div>
+          <div class="stat"><p class="n">41</p><p class="t">All time</p></div>
+        </div>
+
+        <!-- Waiting for write-up -->
+        <div class="row-card wait">
+          <div class="sess">
+            <div class="date"><span class="d">8</span><span class="m">Mar</span></div>
+            <div class="grow">
+              <p class="who">Pragmatic Dharma teacher training <span class="kind">Group</span></p>
+              <p class="meta">Fri 8 Mar · 7:00–8:00pm · <strong style="color:var(--accent);font-weight:500">Waiting for your write-up</strong></p>
+              <div class="actions">
+                <a class="btn primary">Write it up</a>
+                <a class="btn">Log a sit</a>
+                <button class="btn quiet">No write-up needed</button>
+                <button class="btn quiet">Didn't happen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="two">
+          <!-- Left: upcoming + past -->
+          <div class="stack" style="gap:24px">
+            <div>
+              <h2 class="h2">Coming up</h2>
+              <div class="list">
+                <div class="row-card"><div class="sess">
+                  <div class="date"><span class="d">22</span><span class="m">Mar</span></div>
+                  <div class="grow"><p class="who">Pragmatic Dharma teacher training <span class="kind">Group</span></p>
+                  <p class="meta">Fri · 7:00–8:00pm · in 9 days</p></div></div></div>
+                <div class="row-card"><div class="sess">
+                  <div class="date"><span class="d">26</span><span class="m">Mar</span></div>
+                  <div class="grow"><p class="who">Vince Horn <span class="kind">Mentoring</span></p>
+                  <p class="meta">Tue · 11:00–11:45am</p></div></div></div>
+                <div class="row-card"><div class="sess">
+                  <div class="date"><span class="d">29</span><span class="m">Mar</span></div>
+                  <div class="grow"><p class="who">Pragmatic Dharma teacher training <span class="kind">Group</span></p>
+                  <p class="meta">Fri · 7:00–8:00pm</p></div></div></div>
+                <div class="row-card"><div class="sess">
+                  <div class="date"><span class="d">3</span><span class="m">Apr</span></div>
+                  <div class="grow"><p class="who">Michael Taft <span class="kind">Coaching</span></p>
+                  <p class="meta">Wed · 9:30–10:25am</p></div></div></div>
+                <div class="row-card"><div class="sess">
+                  <div class="date"><span class="d">13</span><span class="m">May</span></div>
+                  <div class="grow"><p class="who">Emily Horn <span class="kind">1:1 training</span></p>
+                  <p class="meta">Mon · 3:00–3:45pm</p></div></div></div>
+              </div>
+            </div>
+
+            <div>
+              <h2 class="h2">Past sessions</h2>
+              <div class="list">
+                <div class="row-card"><div class="sess">
+                  <div class="date"><span class="d">1</span><span class="m">Mar</span></div>
+                  <div class="grow"><p class="who">Pragmatic Dharma teacher training <span class="kind">Group</span></p>
+                  <p class="meta">Fri · 7:00–8:00pm</p>
+                  <p class="done">✓ Written up · <a class="link">Read entry</a> &nbsp; ✓ Sat 20 min</p></div></div></div>
+                <div class="row-card"><div class="sess">
+                  <div class="date"><span class="d">5</span><span class="m">Dec</span></div>
+                  <div class="grow"><p class="who">Michael Taft <span class="kind">Coaching</span></p>
+                  <p class="meta">Wed · 9:30–10:25am</p>
+                  <p class="meta">Before the diary existed · <a class="link">Write it up</a></p></div></div></div>
+                <div class="row-card" style="opacity:.6"><div class="sess">
+                  <div class="date"><span class="d">17</span><span class="m">Oct</span></div>
+                  <div class="grow"><p class="who">Michael Taft <span class="kind">Coaching</span></p>
+                  <p class="meta">Wed · 9:30–10:25am · marked "didn't happen" · <a class="link">Undo</a></p></div></div></div>
+              </div>
+              <a class="link" style="display:block;text-align:center;margin-top:16px">Show all 41 past sessions →</a>
+            </div>
+          </div>
+
+          <!-- Right: month view + per-teacher counts -->
+          <div class="stack" style="gap:24px">
+            <div class="card" style="padding:20px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+                <button class="btn quiet">‹</button><strong style="font-weight:500">March 2030</strong><button class="btn quiet">›</button>
+              </div>
+              <table class="cal">
+                <tr><th>Mon</th><th>Tue</th><th>Wed</th><th>Thu</th><th>Fri</th><th>Sat</th><th>Sun</th></tr>
+                <tr><td class="out">25</td><td class="out">26</td><td class="out">27</td><td class="out">28</td><td>1<span class="pip">PD training</span></td><td>2</td><td>3</td></tr>
+                <tr><td>4</td><td>5</td><td>6</td><td>7</td><td>8<span class="pip">PD training</span></td><td>9</td><td>10</td></tr>
+                <tr><td>11</td><td>12</td><td>13</td><td>14</td><td>15</td><td>16</td><td>17</td></tr>
+                <tr><td>18</td><td>19</td><td>20</td><td>21</td><td>22<span class="pip">PD training</span></td><td>23</td><td>24</td></tr>
+                <tr><td>25</td><td>26<span class="pip">Vince</span></td><td>27</td><td>28</td><td>29<span class="pip">PD training</span></td><td>30</td><td>31</td></tr>
+              </table>
+            </div>
+
+            <div class="card" style="padding:20px">
+              <h2 class="h2" style="margin-bottom:4px">Sessions by teacher</h2>
+              <p class="meta" style="margin-bottom:8px">Sessions that have happened · this year / all time</p>
+              <div class="teach"><span>Michael Taft</span><span><span class="c">5</span> <span class="meta">/ 27</span></span></div>
+              <div class="teach"><span>Pragmatic Dharma training</span><span><span class="c">2</span> <span class="meta">/ 2</span></span></div>
+              <div class="teach"><span>Vince Horn</span><span><span class="c">0</span> <span class="meta">/ 0 · next 26 Mar</span></span></div>
+              <div class="teach"><span>Emily Horn</span><span><span class="c">0</span> <span class="meta">/ 0 · next 13 May</span></span></div>
+            </div>
+
+            <div class="foot">
+              <span>Updated 3 minutes ago from your Google Calendar via Balla Bot</span>
+              <button class="btn" style="padding:4px 10px">Refresh</button>
+            </div>
+            <p class="meta" style="font-size:.8rem">Reminders before and after sessions come from Balla Bot on Telegram. To change them, ask Balla Bot.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 2. PHONE ============ -->
+  <h2 class="sec">2 · The same tab on a phone (375 wide), with Diary added to the bottom bar</h2>
+  <p class="note">The bottom bar goes from 6 to 7 buttons. At 375 wide each button gets about 53 pixels, which fits the existing labels. On a phone the month grid is a second view, and the list shows first.</p>
+  <div class="frame phone">
+    <div class="main">
+      <div class="stack" style="gap:20px">
+        <div><h1 class="h1" style="font-size:1.6rem">Diary</h1><p class="sub" style="font-size:.9rem">Your sessions with your teachers.</p></div>
+        <div class="stats">
+          <div class="stat"><p class="n">4</p><p class="t">This month</p></div>
+          <div class="stat"><p class="n">19</p><p class="t">This year</p></div>
+          <div class="stat"><p class="n">41</p><p class="t">All time</p></div>
+        </div>
+        <div class="row-card wait"><div class="sess">
+          <div class="date"><span class="d">8</span><span class="m">Mar</span></div>
+          <div class="grow"><p class="who">PD teacher training</p>
+          <p class="meta">Fri 7–8pm · <strong style="color:var(--accent);font-weight:500">Waiting for write-up</strong></p>
+          <div class="actions"><a class="btn primary">Write it up</a><a class="btn">Log a sit</a></div>
+          <div class="actions" style="margin-top:4px"><button class="btn quiet">No write-up needed</button><button class="btn quiet">Didn't happen</button></div>
+          </div></div></div>
+        <div class="tabs"><span class="on">List</span><span>Month</span></div>
+        <div>
+          <h2 class="h2">Coming up</h2>
+          <div class="list">
+            <div class="row-card"><div class="sess"><div class="date"><span class="d">22</span><span class="m">Mar</span></div><div class="grow"><p class="who">PD teacher training</p><p class="meta">Fri 7:00–8:00pm · in 9 days</p></div></div></div>
+            <div class="row-card"><div class="sess"><div class="date"><span class="d">26</span><span class="m">Mar</span></div><div class="grow"><p class="who">Vince Horn</p><p class="meta">Tue 11:00–11:45am · Mentoring</p></div></div></div>
+            <div class="row-card"><div class="sess"><div class="date"><span class="d">3</span><span class="m">Apr</span></div><div class="grow"><p class="who">Michael Taft</p><p class="meta">Wed 9:30–10:25am · Coaching</p></div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <nav class="bar">
+      <a class="nav"><span class="i">⌂</span><span class="l">Home</span></a>
+      <a class="nav"><span class="i">◯</span><span class="l">Meditate</span></a>
+      <a class="nav"><span class="i">✎</span><span class="l">Journal</span></a>
+      <a class="nav on"><span class="i">▦</span><span class="l">Diary</span></a>
+      <a class="nav"><span class="i">◫</span><span class="l">Stats</span></a>
+      <a class="nav"><span class="i">◈</span><span class="l">Teacher</span></a>
+      <a class="nav"><span class="i">⚙</span><span class="l">Settings</span></a>
+    </nav>
+  </div>
+
+  <!-- ============ 3. HOME + WRITE-UP ============ -->
+  <h2 class="sec">3 · Where the "write it up" prompt shows, and what writing it up looks like</h2>
+  <div class="grid-states">
+    <div class="frame" style="padding:20px">
+      <p class="note" style="margin-top:0">Home page: one extra line under the greeting, shown only when a session is waiting. Otherwise the home page is unchanged.</p>
+      <h1 class="h1">Good evening</h1>
+      <p class="sub" style="margin-bottom:16px">You've completed 42 sessions.</p>
+      <a class="tip" style="display:block;text-decoration:none">
+        <strong style="color:var(--foreground)">How did Friday's teacher training go?</strong><br>
+        Your session on 8 Mar is waiting for a write-up. <span style="color:var(--accent)">Write it up →</span>
+      </a>
+    </div>
+
+    <div class="frame" style="padding:20px">
+      <p class="note" style="margin-top:0">"Write it up" opens the usual New Journal Entry page, already filled in. Saving goes back to the Diary, and the session shows as written up.</p>
+      <h1 class="h1" style="font-size:1.5rem">New Journal Entry</h1>
+      <p class="meta" style="margin-bottom:14px">For your session: Pragmatic Dharma teacher training · Fri 8 Mar</p>
+      <label class="f">Title</label>
+      <input class="field" value="Teacher training - Mar 8, 2030" style="margin-bottom:12px">
+      <label class="f">Entry</label>
+      <textarea class="field" rows="4" placeholder="What came up in the session? Anything to practise before the next one?"></textarea>
+      <p style="margin:12px 0 4px"><span class="chip">teacher session</span><span class="chip">pragmatic dharma</span></p>
+      <div class="actions"><a class="btn primary">Save Entry</a><a class="btn">Cancel</a></div>
+    </div>
+
+    <div class="frame" style="padding:20px">
+      <p class="note" style="margin-top:0">"Log a sit" opens the usual Meditate timer with a line showing which session it belongs to. When the sit is saved, the Diary marks it.</p>
+      <p class="meta" style="text-align:center;margin-bottom:8px">After: Pragmatic Dharma teacher training · Fri 8 Mar</p>
+      <div style="width:150px;height:150px;border-radius:50%;border:2px solid var(--accent);margin:8px auto;display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:300">20:00</div>
+      <div class="actions" style="justify-content:center"><a class="btn primary">Begin</a></div>
+    </div>
+  </div>
+
+  <!-- ============ 4. STATES ============ -->
+  <h2 class="sec">4 · When things are missing</h2>
+  <div class="grid-states">
+    <div class="frame" style="padding:20px">
+      <p class="note" style="margin-top:0">Balla Bot can't be reached (for example, while the mini restarts). The diary still shows the sessions it saw last time.</p>
+      <div class="row-card" style="border-color:var(--border)">
+        <p class="meta" style="margin:0">Couldn't get new sessions from your calendar just now. Showing what was there 2 hours ago. <a class="link">Try again</a></p>
+      </div>
+    </div>
+    <div class="frame" style="padding:20px">
+      <p class="note" style="margin-top:0">First visit, before any sessions have come through.</p>
+      <div class="card" style="text-align:center">
+        <div style="width:56px;height:56px;border-radius:50%;border:2px solid var(--accent);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:1.4rem">▦</div>
+        <p class="who">No sessions yet</p>
+        <p class="meta">Sessions with your teachers will appear here once they're in your Google Calendar.</p>
+      </div>
+    </div>
+    <div class="frame" style="padding:20px">
+      <p class="note" style="margin-top:0">Other people who use the app: no Diary button and no home-page line. Their app is unchanged.</p>
+      <nav class="bar" style="border:1px solid var(--border);border-radius:12px">
+        <a class="nav"><span class="i">⌂</span><span class="l">Home</span></a>
+        <a class="nav"><span class="i">◯</span><span class="l">Meditate</span></a>
+        <a class="nav"><span class="i">✎</span><span class="l">Journal</span></a>
+        <a class="nav"><span class="i">◫</span><span class="l">Stats</span></a>
+        <a class="nav"><span class="i">◈</span><span class="l">Teacher</span></a>
+        <a class="nav"><span class="i">⚙</span><span class="l">Settings</span></a>
+      </nav>
+    </div>
+  </div>
+</div>
+</body>
+</html>

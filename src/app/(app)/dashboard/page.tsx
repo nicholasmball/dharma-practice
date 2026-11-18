@@ -1,8 +1,13 @@
 import { createClient } from '@/lib/postgrest/client'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { isDiaryUser } from '@/lib/diary/access'
+import { WRITE_UP_WINDOW_DAYS, displayName, formatDayMonth, waitingForWriteUp, writeUpHref } from '@/lib/diary/counts'
+import type { DiarySession } from '@/lib/types'
 import Link from 'next/link'
 
 export default async function DashboardPage() {
-  const db = await createClient()
+  const [db, user] = await Promise.all([createClient(), getCurrentUser()])
+  const showDiary = isDiaryUser(user?.email)
 
   // Run all independent queries in parallel (RLS on the mini scopes each
   // one to the signed-in user via the client's token, so there's no
@@ -11,6 +16,7 @@ export default async function DashboardPage() {
     { data: allSessions },
     { count: journalCount },
     { count: conversationCount },
+    { data: recentDiary },
   ] = await Promise.all([
     db
       .from('meditation_sessions')
@@ -23,7 +29,17 @@ export default async function DashboardPage() {
     db
       .from('teacher_conversations')
       .select('*', { count: 'exact', head: true }),
+    // Diary users only: saved sessions from the last fortnight. This reads the
+    // saved copy and never calls Balla Bot, so Home never waits on it. If the
+    // diary tables aren't there yet the line simply doesn't show.
+    showDiary
+      ? db
+          .from('diary_sessions')
+          .select('*')
+          .gte('ends_at', writeUpWindowStart())
+      : Promise.resolve({ data: null }),
   ])
+  const waitingSession = waitingForWriteUp((recentDiary as DiarySession[] | null) ?? [], new Date())[0] ?? null
 
   // Derive everything from the single sessions query
   const recentSessions = allSessions?.slice(0, 5) || null
@@ -278,6 +294,7 @@ export default async function DashboardPage() {
         <p style={{ color: 'var(--muted)' }}>
           {`You've completed ${totalSessions} ${totalSessions === 1 ? 'session' : 'sessions'}.`}
         </p>
+        {waitingSession && <DiaryWriteUpPrompt session={waitingSession} />}
       </div>
 
       {/* Quick Actions */}
@@ -404,4 +421,47 @@ function getGreeting(): string {
   if (hour < 12) return 'Good morning'
   if (hour < 17) return 'Good afternoon'
   return 'Good evening'
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function writeUpWindowStart(): string {
+  return new Date(Date.now() - WRITE_UP_WINDOW_DAYS * DAY_MS).toISOString()
+}
+
+function daysSince(iso: string): number {
+  return (Date.now() - Date.parse(iso)) / DAY_MS
+}
+
+// One line under the greeting when a Diary session is waiting for a write-up.
+function DiaryWriteUpPrompt({ session }: { session: DiarySession }) {
+  const daysAgo = daysSince(session.starts_at)
+  const weekday = new Date(session.starts_at).toLocaleDateString('en-GB', { weekday: 'long', timeZone: 'Europe/London' })
+  const what = session.kind === 'group' ? 'teacher training' : `session with ${session.teacher}`
+  const question = daysAgo < 6 ? `How did ${weekday}'s ${what} go?` : `How did your ${what} go?`
+  const [, day, month] = formatDayMonth(session.starts_at).split(' ')
+
+  return (
+    <Link
+      href={writeUpHref(session.source_id)}
+      title={displayName(session)}
+      style={{
+        display: 'block',
+        marginTop: '16px',
+        padding: '16px 20px',
+        backgroundColor: 'var(--surface)',
+        border: '1px solid var(--accent)',
+        borderLeftWidth: '3px',
+        borderRadius: '12px',
+        fontSize: '0.875rem',
+        color: 'var(--muted)',
+        textDecoration: 'none',
+      }}
+    >
+      <strong style={{ color: 'var(--foreground)' }}>{question}</strong>
+      <br />
+      Your session on {day} {month} is waiting for a write-up.{' '}
+      <span style={{ color: 'var(--accent)' }}>Write it up →</span>
+    </Link>
+  )
 }
