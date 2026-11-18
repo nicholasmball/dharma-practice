@@ -142,11 +142,19 @@ export async function exportUserData() {
     .eq('user_id', user.id)
     .single()
 
+  // Diary sessions (only diary users have any; empty if the table isn't there yet)
+  const { data: diarySessions } = await db
+    .from('diary_sessions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('starts_at', { ascending: false })
+
   const exportData = {
     exported_at: new Date().toISOString(),
     user_email: user.email,
     meditation_sessions: sessions || [],
     journal_entries: entries || [],
+    diary_sessions: diarySessions || [],
     settings: settings || null,
   }
 
@@ -161,7 +169,16 @@ export async function deleteAccount() {
     return { error: 'Not authenticated' }
   }
 
-  // Delete all user data from each table
+  // Delete all user data from each table. Diary rows go first because they
+  // point at sits and journal entries. A missing diary table (before the diary
+  // SQL is applied) must not block deleting an account.
+  for (const table of ['diary_sessions', 'diary_sync_status']) {
+    const { error: diaryError } = await db.from(table).delete().eq('user_id', user.id)
+    if (diaryError && !isMissingTable(diaryError)) {
+      return { error: `Failed to delete ${table.replace(/_/g, ' ')}: ` + diaryError.message }
+    }
+  }
+
   const { error: sessionsError } = await db
     .from('meditation_sessions')
     .delete()
@@ -209,4 +226,9 @@ export async function deleteAccount() {
   await signOut({ redirect: false })
 
   return { success: true }
+}
+
+// PostgREST reports a table it doesn't know as PGRST205; Postgres itself as 42P01.
+function isMissingTable(error: { code?: string }): boolean {
+  return error.code === 'PGRST205' || error.code === '42P01'
 }

@@ -3,12 +3,15 @@
 import { createClient } from '@/lib/postgrest/client'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
 import { revalidatePath } from 'next/cache'
+import { linkDiarySession } from '@/lib/diary/lookup'
 import { BuiltInPracticeType, practiceTypeLabels, BUILT_IN_PRACTICE_TYPES, CustomPracticeType } from '@/lib/types'
 
 export async function saveSession(data: {
   duration_seconds: number
   practice_type: string
   notes?: string
+  // Set when the sit was started from a Diary session ("Log a sit").
+  diarySourceId?: string
 }) {
   const user = await getCurrentUser()
   const db = await createClient()
@@ -21,7 +24,7 @@ export async function saveSession(data: {
   const startedAt = new Date(Date.now() - data.duration_seconds * 1000).toISOString()
 
   // Save the meditation session
-  const { error } = await db.from('meditation_sessions').insert({
+  const { data: saved, error } = await db.from('meditation_sessions').insert({
     user_id: user.id,
     started_at: startedAt,
     ended_at: now.toISOString(),
@@ -29,10 +32,15 @@ export async function saveSession(data: {
     practice_type: data.practice_type,
     completed: true,
     notes: data.notes || null,
-  })
+  }).select('id').single()
 
   if (error) {
     return { error: error.message }
+  }
+
+  let diaryLinked = true
+  if (data.diarySourceId) {
+    diaryLinked = await linkDiarySession(db, user.id, data.diarySourceId, { meditation_session_id: saved.id })
   }
 
   // If notes were provided, also create a journal entry
@@ -64,19 +72,25 @@ export async function saveSession(data: {
 
     const title = `${practiceTypeName} - ${dateStr} - ${durationMinutes} min`
 
-    await db.from('journal_entries').insert({
+    const { data: entry } = await db.from('journal_entries').insert({
       user_id: user.id,
       title: title,
       content: data.notes.trim(),
       tags: ['session notes'],
       practice_type: data.practice_type,
-    })
+    }).select('id').single()
+
+    // Notes written after a Diary sit count as its write-up, unless it has one already.
+    if (data.diarySourceId && entry) {
+      await linkDiarySession(db, user.id, data.diarySourceId, { journal_entry_id: entry.id })
+    }
   }
 
   revalidatePath('/dashboard')
   revalidatePath('/stats')
   revalidatePath('/timer')
   revalidatePath('/journal')
+  if (data.diarySourceId) revalidatePath('/diary')
 
-  return { success: true }
+  return { success: true, diaryLinked }
 }

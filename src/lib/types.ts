@@ -112,3 +112,26 @@ export function getPracticeTypeLabel(type: string, customTypes?: CustomPracticeT
   // Fallback: capitalize the type
   return type.charAt(0).toUpperCase() + type.slice(1)
 }
+
+// Diary of teacher sessions (card 26bbbc17). Rows are copied from Balla Bot's
+// session list; see src/lib/diary/ and scripts/mini/sql/2026-11-diary.sql.
+export type DiaryKind = 'coaching' | 'mentoring' | 'training_1to1' | 'group' | 'other'
+
+export interface DiarySession {
+  id: string
+  user_id: string
+  source_id: string
+  teacher: string
+  kind: DiaryKind
+  title: string
+  starts_at: string
+  ends_at: string
+  status: 'scheduled' | 'cancelled' | 'removed'
+  skipped: boolean
+  writeup_dismissed: boolean
+  journal_entry_id: string | null
+  meditation_session_id: string | null
+  last_seen_at: string
+  created_at: string
+  updated_at: string
+}

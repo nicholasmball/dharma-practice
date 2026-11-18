@@ -8,12 +8,14 @@ const navItems = [
   { href: '/dashboard', label: 'Home', icon: '⌂' },
   { href: '/timer', label: 'Meditate', icon: '◯' },
   { href: '/journal', label: 'Journal', icon: '✎' },
+  { href: '/diary', label: 'Diary', icon: '▦', diaryOnly: true },
   { href: '/stats', label: 'Stats', icon: '◫' },
   { href: '/teacher', label: 'Teacher', icon: '◈' },
   { href: '/settings', label: 'Settings', icon: '⚙' },
 ]
 
-export default function Navigation() {
+// The Diary button shows only for DIARY_USER_EMAILS (decided in the layout).
+export default function Navigation({ showDiary = false }: { showDiary?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
 
@@ -26,7 +28,7 @@ export default function Navigation() {
         </Link>
 
         {/* Nav items */}
-        {navItems.map((item) => {
+        {navItems.filter((item) => showDiary || !item.diaryOnly).map((item) => {
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
