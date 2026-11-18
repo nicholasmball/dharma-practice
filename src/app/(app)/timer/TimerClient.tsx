@@ -209,6 +209,13 @@ interface TimerClientProps {
   defaultPracticeType: string
   customPracticeTypes: CustomPracticeType[]
   bellSound: string
+  // Set when the timer was opened from a Diary session ("Log a sit").
+  diaryLink?: DiaryLink | null
+}
+
+interface DiaryLink {
+  sourceId: string
+  label: string
 }
 
 const TIMER_STORAGE_KEY = 'dharma-timer-state'
@@ -220,6 +227,8 @@ interface SavedTimerState {
   pausedTimeRemaining: number | null
   practiceType: string
   intervalBells: number
+  // Kept with the running sit so a reload doesn't lose which Diary session it's for.
+  diaryLink?: DiaryLink | null
 }
 
 function saveTimerToStorage(state: SavedTimerState) {
@@ -244,8 +253,9 @@ function clearTimerStorage() {
   } catch {}
 }
 
-export default function TimerClient({ defaultDuration, defaultPracticeType, customPracticeTypes, bellSound }: TimerClientProps) {
+export default function TimerClient({ defaultDuration, defaultPracticeType, customPracticeTypes, bellSound, diaryLink: initialDiaryLink = null }: TimerClientProps) {
   const router = useRouter()
+  const [diaryLink, setDiaryLink] = useState<DiaryLink | null>(initialDiaryLink)
   const [timerState, setTimerState] = useState<TimerState>('setup')
   const [selectedDuration, setSelectedDuration] = useState(defaultDuration)
   const [customMinutes, setCustomMinutes] = useState('')
@@ -276,6 +286,9 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
   useEffect(() => {
     const saved = loadTimerFromStorage()
     if (!saved) return
+    if (saved.timerState === 'running' || saved.timerState === 'paused') {
+      setDiaryLink(saved.diaryLink ?? null)
+    }
 
     const now = Date.now()
     const elapsed = Math.floor((now - saved.startTime) / 1000)
@@ -478,10 +491,11 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
         pausedTimeRemaining: null,
         practiceType,
         intervalBells,
+        diaryLink,
       })
       playBell()
     }
-  }, [prepCountdown, selectedDuration, practiceType, intervalBells, playBell])
+  }, [prepCountdown, selectedDuration, practiceType, intervalBells, diaryLink, playBell])
 
   const handlePause = () => {
     setPausedTimeRemaining(timeRemaining)
@@ -494,6 +508,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
       pausedTimeRemaining: timeRemaining,
       practiceType,
       intervalBells,
+      diaryLink,
     })
   }
 
@@ -508,6 +523,7 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
       pausedTimeRemaining: timeRemaining,
       practiceType,
       intervalBells,
+      diaryLink,
     })
   }
 
@@ -528,10 +544,15 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
       duration_seconds: actualDuration,
       practice_type: practiceType,
       notes: notes || undefined,
+      diarySourceId: diaryLink?.sourceId,
     })
 
     if (result.success) {
-      router.push('/dashboard')
+      if (diaryLink) {
+        router.push(result.diaryLinked ? '/diary' : '/diary?notice=sit-link-failed')
+      } else {
+        router.push('/dashboard')
+      }
     } else {
       alert('Failed to save session: ' + result.error)
       setSaving(false)
@@ -587,9 +608,14 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
   if (timerState === 'setup') {
     return (
       <div style={{ maxWidth: '500px', margin: '0 auto' }}>
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 300, marginBottom: '32px', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '1.875rem', fontWeight: 300, marginBottom: diaryLink ? '8px' : '32px', textAlign: 'center' }}>
           Begin Practice
         </h1>
+        {diaryLink && (
+          <p style={{ fontSize: '0.875rem', color: 'var(--muted)', textAlign: 'center', margin: '0 0 24px' }}>
+            After: {diaryLink.label}
+          </p>
+        )}
 
         {/* Duration Selection */}
         <div style={{ marginBottom: '32px' }}>
@@ -949,9 +975,14 @@ export default function TimerClient({ defaultDuration, defaultPracticeType, cust
       <h1 style={{ fontSize: '1.875rem', fontWeight: 300, marginBottom: '8px' }}>
         Session Complete
       </h1>
-      <p style={{ color: 'var(--muted)', marginBottom: '32px' }}>
+      <p style={{ color: 'var(--muted)', marginBottom: diaryLink ? '8px' : '32px' }}>
         {Math.floor(selectedDuration / 60)} minutes of {getLabel(practiceType)}
       </p>
+      {diaryLink && (
+        <p style={{ fontSize: '0.875rem', color: 'var(--muted)', marginBottom: '32px' }}>
+          After: {diaryLink.label}
+        </p>
+      )}
 
       {/* Notes */}
       <div style={{ marginBottom: '24px', textAlign: 'left' }}>
