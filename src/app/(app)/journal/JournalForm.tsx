@@ -19,13 +19,17 @@ interface JournalFormProps {
     practice_type: string | null
   }
   customPracticeTypes?: CustomPracticeType[]
+  // A new entry written up from a Diary session: pre-filled title and tags,
+  // and the session's id so saving links the entry to it.
+  initialDefaults?: { title: string; tags: string[] }
+  diarySourceId?: string
 }
 
-export default function JournalForm({ initialData, customPracticeTypes = [] }: JournalFormProps) {
+export default function JournalForm({ initialData, customPracticeTypes = [], initialDefaults, diarySourceId }: JournalFormProps) {
   const router = useRouter()
-  const [title, setTitle] = useState(initialData?.title || '')
+  const [title, setTitle] = useState(initialData?.title || initialDefaults?.title || '')
   const [content, setContent] = useState(initialData?.content || '')
-  const [tags, setTags] = useState<string[]>(initialData?.tags || [])
+  const [tags, setTags] = useState<string[]>(initialData?.tags || initialDefaults?.tags || [])
   const [newTag, setNewTag] = useState('')
   const [practiceType, setPracticeType] = useState<string>(initialData?.practice_type || '')
   const [saving, setSaving] = useState(false)
@@ -71,7 +75,7 @@ export default function JournalForm({ initialData, customPracticeTypes = [] }: J
           setSaving(false)
         }
       } else {
-        const result = await createJournalEntry(data)
+        const result = await createJournalEntry({ ...data, diarySourceId })
         if (result?.error) {
           setError(result.error)
           setSaving(false)
@@ -128,7 +132,9 @@ export default function JournalForm({ initialData, customPracticeTypes = [] }: J
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="Write about your practice, insights, questions, or experiences..."
+          placeholder={diarySourceId
+            ? 'What came up in the session? Anything to practise before the next one?'
+            : 'Write about your practice, insights, questions, or experiences...'}
           rows={12}
           style={{
             width: '100%',
